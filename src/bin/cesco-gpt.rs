@@ -1,7 +1,10 @@
 use cesco_gpt::talks::Talk;
+
 use chatgpt::prelude::*;
 use clap::Parser;
-use std::io::{self, BufRead};
+use futures_util::Stream;
+use futures_util::StreamExt;
+use std::io::{self, stdout, BufRead, Write};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -12,7 +15,7 @@ struct Args {
 
 fn read_msg() -> Option<String> {
     let lines = io::stdin().lock().lines();
-    let mut msg = String::new();    
+    let mut msg = String::new();
     for line in lines {
         let line = line.expect("Error while reading line from stdin.");
         if line.is_empty() {
@@ -29,6 +32,24 @@ fn read_msg() -> Option<String> {
     }
 }
 
+async fn print_stream(stream: impl Stream<Item = ResponseChunk>) {
+    println!("\n");
+    stream
+        .for_each(|each| async move {
+            if let ResponseChunk::Content {
+                delta,
+                response_index: _,
+            } = each
+            {
+                // Printing part of response without the newline
+                print!("{delta}");
+                stdout().lock().flush().unwrap();
+            }
+        })
+        .await;
+    println!("\n");
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
@@ -38,8 +59,8 @@ async fn main() -> Result<()> {
     let mut conv = talk.get_conv(client).await;
     println!("Ask away my friend.\n");
     while let Some(msg) = read_msg() {
-        let response = conv.send_message(msg).await?;
-        println!("\n{}\n", response.message().content);
+        let stream = conv.send_message_streaming(msg).await?;
+        print_stream(stream).await;
     }
 
     Ok(())
