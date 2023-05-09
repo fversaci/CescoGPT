@@ -1,5 +1,5 @@
+use cesco_gpt::talks::lang_practice::{Lang, LangLevel};
 use cesco_gpt::talks::Talk;
-
 use chatgpt::prelude::*;
 use clap::Parser;
 use futures_util::Stream;
@@ -9,7 +9,7 @@ use std::io::{self, stdout, BufRead, Write};
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Which service do you want to show?
+    /// Insert your openAI API key
     api_key: String,
 }
 
@@ -33,7 +33,6 @@ fn read_msg() -> Option<String> {
 }
 
 async fn print_stream(stream: impl Stream<Item = ResponseChunk>) {
-    println!("\n");
     stream
         .for_each(|each| async move {
             if let ResponseChunk::Content {
@@ -55,8 +54,11 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     let key = args.api_key;
     let client = ChatGPT::new(key)?;
-    let talk = Talk::Deutsch;
-    let mut conv = talk.get_conv(client).await;
+    let talk = Talk::LangPractice {
+        lang: Lang::German,
+        level: LangLevel::B2,
+    };
+    let mut conv = talk.get_conv(client).await?;
     println!("Ask away my friend.\n");
     while let Some(msg) = read_msg() {
         let stream = conv.send_message_streaming(msg).await?;
