@@ -6,8 +6,8 @@ use strum_macros::{Display, EnumIter, EnumString};
 #[derive(Default, Display, Debug, Clone, EnumIter, EnumString)]
 pub enum Lang {
     #[default]
-    German,
     English,
+    German,
     French,
 }
 
@@ -23,7 +23,7 @@ pub enum LangLevel {
 }
 
 pub async fn get_conv(
-    client: ChatGPT,
+    client: &ChatGPT,
     lang: &Lang,
     level: &LangLevel,
 ) -> Result<Conversation, Error> {

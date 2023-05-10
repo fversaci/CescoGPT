@@ -11,9 +11,11 @@ chatgpt_rs = { version = "1.1.4", features = ["streams"] }
 clap = { version = "4.2.7", features = ["derive"] }
 futures-util = "0.3.28"
 log = "0.4.17"
+pretty_env_logger = "0.4.0"
 serde = "1.0.162"
+sqlx = { version = "0.7.0-alpha.2", features = ["runtime-tokio-rustls", "sqlite"] }
 strum = "0.24.1"
 strum_macros = "0.24.3"
-teloxide = "0.12.2"
+teloxide = { version = "0.12.2", features = ["macros", "auto-send"] }
 tokio = { version = "1.28.0", features = ["full"] }
 toml = "0.7.3"

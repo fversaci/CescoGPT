@@ -17,7 +17,7 @@ pub enum Talk {
 }
 
 impl Talk {
-    pub async fn get_conv(&self, client: ChatGPT) -> Result<Conversation, Error> {
+    pub async fn get_conv(&self, client: &ChatGPT) -> Result<Conversation, Error> {
         match self {
             Talk::Basic => basic::get_conv(client).await,
             Talk::LangPractice { lang, level } => {

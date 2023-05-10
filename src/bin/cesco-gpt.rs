@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
         lang: Lang::German,
         level: LangLevel::B2,
     };
-    let mut conv = talk.get_conv(client).await?;
+    let mut conv = talk.get_conv(&client).await?;
     println!("Ask away my friend.\n");
     while let Some(msg) = read_msg() {
         let stream = conv.send_message_streaming(msg).await?;
