@@ -34,11 +34,11 @@ impl Clone for ChatConv {
                 let conv =
                     Conversation::new_with_history(self.chat_client.clone(), conv.history.clone());
                 ChatConv {
-                    conv: Some(conv),
                     chat_client: self.chat_client.clone(),
+                    conv: Some(conv),
                 }
             }
-            _ => self.clone(),
+            None => self.clone(),
         }
     }
 }
