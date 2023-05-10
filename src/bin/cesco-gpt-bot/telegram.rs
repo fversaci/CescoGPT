@@ -198,7 +198,7 @@ async fn do_talk(
     // If markdown cannot be parsed, send it as raw text
     if sent.is_err() {
         Sender::new(bot.clone(), md.clone()).await?;
-        println!("FIX ME!");
+        log::debug!("Cannot parse markdown: {}", sent.err().unwrap());
     };
 
     Ok(())
