@@ -31,7 +31,8 @@ impl Clone for ChatConv {
     fn clone(&self) -> Self {
         match &self.conv {
             Some(conv) => {
-                let conv = Conversation::new_with_history(self.chat_client.clone(), conv.history.clone());
+                let conv =
+                    Conversation::new_with_history(self.chat_client.clone(), conv.history.clone());
                 ChatConv {
                     conv: Some(conv),
                     chat_client: self.chat_client.clone(),
@@ -69,7 +70,10 @@ async fn main() -> Result<()> {
     let chat_client = ChatGPT::new(key)?;
     let my_state = Arc::new(MyState {
         my_conf,
-        chat_conv: ChatConv {chat_client, conv: None},
+        chat_conv: ChatConv {
+            chat_client,
+            conv: None,
+        },
     });
     Dispatcher::builder(bot, telegram::schema(my_state))
         .dependencies(dptree::deps![InMemStorage::<telegram::State>::new()])

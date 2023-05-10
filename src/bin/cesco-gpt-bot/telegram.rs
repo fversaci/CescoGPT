@@ -7,8 +7,10 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 use teloxide::{
     dispatching::{dialogue, dialogue::InMemStorage, UpdateHandler},
+    payloads,
     prelude::*,
-    types::{InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
+    requests::JsonRequest,
+    types::{InlineKeyboardButton, InlineKeyboardMarkup, MessageId, ParseMode},
     utils::command::BotCommands,
 };
 
@@ -59,7 +61,13 @@ pub fn schema(
 
     let message_handler = Update::filter_message()
         .branch(command_handler)
-        .branch(case![State::DoTalk { my_state, chat_conv }].endpoint(do_talk))
+        .branch(
+            case![State::DoTalk {
+                my_state,
+                chat_conv
+            }]
+            .endpoint(do_talk),
+        )
         .branch(dptree::endpoint(invalid_state));
 
     let callback_query_handler = Update::filter_callback_query()
@@ -153,11 +161,11 @@ async fn start_talk(
     let (my_state, m_id) = tup_state;
     let chat_id = dialogue.chat_id();
     clean_buttons(bot.clone(), chat_id, m_id).await?;
-    // ------------------
-    let talk = Talk::LangPractice {
-        lang: Lang::German,
-        level: LangLevel::B2,
-    };
+    // let talk = Talk::LangPractice {
+    //     lang: Lang::German,
+    //     level: LangLevel::B2,
+    // };
+    let talk = Talk::Basic;
     let chat_client = my_state.chat_conv.chat_client.clone();
     let conv = Some(talk.get_conv(&chat_client).await?);
     let chat_conv = ChatConv { chat_client, conv };
@@ -176,12 +184,22 @@ async fn do_talk(
     msg: Message,
     tup_state: (Arc<MyState>, ChatConv),
 ) -> HandlerResult {
-    let (my_state, chat_conv) = tup_state;
+    let (_my_state, chat_conv) = tup_state;
     let chat_id = msg.chat.id;
     let msg = msg.text().unwrap().to_string();
     let mut conv = chat_conv.conv.unwrap();
     let response = conv.send_message(msg);
     let response = response.await?;
-    println!("\n{}\n", response.message().content);
+    // send reply as markdown
+    let msg = &response.message().content;
+    let md = payloads::SendMessage::new(chat_id, msg);
+    type Sender = JsonRequest<payloads::SendMessage>;
+    let sent = Sender::new(bot.clone(), md.clone().parse_mode(ParseMode::Markdown)).await;
+    // If markdown cannot be parsed, send it as raw text
+    if sent.is_err() {
+        Sender::new(bot.clone(), md.clone()).await?;
+        println!("FIX ME!");
+    };
+
     Ok(())
 }
