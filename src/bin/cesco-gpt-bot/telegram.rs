@@ -184,7 +184,7 @@ async fn do_talk(
     msg: Message,
     tup_state: (Arc<MyState>, ChatConv),
 ) -> HandlerResult {
-    let (_my_state, chat_conv) = tup_state;
+    let (my_state, chat_conv) = tup_state;
     let chat_id = msg.chat.id;
     let msg = msg.text().unwrap().to_string();
     let mut conv = chat_conv.conv.unwrap();
@@ -200,6 +200,14 @@ async fn do_talk(
         Sender::new(bot.clone(), md.clone()).await?;
         log::debug!("Cannot parse markdown: {}", sent.err().unwrap());
     };
+    let chat_client = my_state.chat_conv.chat_client.clone();
+    let chat_conv = ChatConv { chat_client, conv: Some(conv) };
+    dialogue
+        .update(State::DoTalk {
+            my_state,
+            chat_conv,
+        })
+        .await?;
 
     Ok(())
 }
