@@ -1,9 +1,10 @@
+use crate::talks::TalkStart;
 use chatgpt::client::ChatGPT;
-use chatgpt::converse::Conversation;
 use chatgpt::err::Error;
+use clap::ValueEnum;
 use strum_macros::{Display, EnumIter, EnumString};
 
-#[derive(Default, Display, Debug, Clone, EnumIter, EnumString)]
+#[derive(Default, Display, Debug, Clone, EnumIter, EnumString, ValueEnum)]
 pub enum Lang {
     #[default]
     English,
@@ -11,7 +12,7 @@ pub enum Lang {
     French,
 }
 
-#[derive(Default, Display, Debug, Clone, EnumIter, EnumString)]
+#[derive(Default, Display, Debug, Clone, EnumIter, EnumString, ValueEnum)]
 pub enum LangLevel {
     #[default]
     A1,
@@ -26,7 +27,7 @@ pub async fn get_conv(
     client: &ChatGPT,
     lang: &Lang,
     level: &LangLevel,
-) -> Result<Conversation, Error> {
+) -> Result<TalkStart, Error> {
     let sys_msg = "You are CescoGPT, an AI to practice conversation in \
     foreign languages. You always reply by first correcting \
     the previous message you received and you always end your \
@@ -34,6 +35,11 @@ pub async fn get_conv(
     let msg = format!("We'll talk in {level} level {lang}. I'll start the conversation.");
 
     let mut conv = client.new_conversation_directed(sys_msg);
-    conv.send_message(msg).await?;
-    Ok(conv)
+    let response = conv.send_message(msg).await?;
+    let msg = &response.message().content;
+    let ts = TalkStart {
+        conv,
+        msg: Some(msg.to_string()),
+    };
+    Ok(ts)
 }

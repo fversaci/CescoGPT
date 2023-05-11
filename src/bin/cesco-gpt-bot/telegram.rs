@@ -161,13 +161,17 @@ async fn start_talk(
     let (my_state, m_id) = tup_state;
     let chat_id = dialogue.chat_id();
     clean_buttons(bot.clone(), chat_id, m_id).await?;
-    // let talk = Talk::LangPractice {
-    //     lang: Lang::German,
-    //     level: LangLevel::B2,
-    // };
-    let talk = Talk::Basic;
+    let talk = Talk::LangPractice {
+        lang: Lang::German,
+        level: LangLevel::B2,
+    };
+    // let talk = Talk::Basic;
     let chat_client = my_state.chat_conv.chat_client.clone();
-    let conv = Some(talk.get_conv(&chat_client).await?);
+    let ts = talk.get_conv(&chat_client).await?;
+    let conv = Some(ts.conv);
+    if let Some(msg) = ts.msg {
+        send_markdown(bot, chat_id, &msg).await?;
+    }
     let chat_conv = ChatConv { chat_client, conv };
     dialogue
         .update(State::DoTalk {
@@ -192,6 +196,23 @@ async fn do_talk(
     let response = response.await?;
     // send reply as markdown
     let msg = &response.message().content;
+    send_markdown(bot, chat_id, msg).await?;
+    let chat_client = my_state.chat_conv.chat_client.clone();
+    let chat_conv = ChatConv {
+        chat_client,
+        conv: Some(conv),
+    };
+    dialogue
+        .update(State::DoTalk {
+            my_state,
+            chat_conv,
+        })
+        .await?;
+
+    Ok(())
+}
+
+async fn send_markdown(bot: Bot, chat_id: ChatId, msg: &str) -> HandlerResult {
     let md = payloads::SendMessage::new(chat_id, msg);
     type Sender = JsonRequest<payloads::SendMessage>;
     let sent = Sender::new(bot.clone(), md.clone().parse_mode(ParseMode::Markdown)).await;
@@ -200,14 +221,6 @@ async fn do_talk(
         Sender::new(bot.clone(), md.clone()).await?;
         log::debug!("Cannot parse markdown: {}", sent.err().unwrap());
     };
-    let chat_client = my_state.chat_conv.chat_client.clone();
-    let chat_conv = ChatConv { chat_client, conv: Some(conv) };
-    dialogue
-        .update(State::DoTalk {
-            my_state,
-            chat_conv,
-        })
-        .await?;
 
     Ok(())
 }

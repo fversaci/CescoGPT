@@ -1,8 +1,10 @@
+use crate::talks::TalkStart;
 use chatgpt::client::ChatGPT;
-use chatgpt::converse::Conversation;
 use chatgpt::err::Error;
 
-pub async fn get_conv(client: &ChatGPT) -> Result<Conversation, Error> {
+pub async fn get_conv(client: &ChatGPT) -> Result<TalkStart, Error> {
     let conv = client.new_conversation();
-    Ok(conv)
+    let msg = Some("Ask away, my friend.".to_string());
+    let ts = TalkStart { conv, msg };
+    Ok(ts)
 }

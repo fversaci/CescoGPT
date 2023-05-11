@@ -1,4 +1,3 @@
-use cesco_gpt::talks::lang_practice::{Lang, LangLevel};
 use cesco_gpt::talks::Talk;
 use chatgpt::prelude::*;
 use clap::Parser;
@@ -11,6 +10,9 @@ use std::io::{self, stdout, BufRead, Write};
 struct Args {
     /// Insert your openAI API key
     api_key: String,
+    /// Choose which conversation to start
+    #[command(subcommand)]
+    talk: Talk,
 }
 
 fn read_msg() -> Option<String> {
@@ -54,12 +56,12 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     let key = args.api_key;
     let client = ChatGPT::new(key)?;
-    let talk = Talk::LangPractice {
-        lang: Lang::German,
-        level: LangLevel::B2,
-    };
-    let mut conv = talk.get_conv(&client).await?;
-    println!("Ask away my friend.\n");
+    let talk = args.talk;
+    let ts = talk.get_conv(&client).await?;
+    let mut conv = ts.conv;
+    if let Some(msg) = ts.msg {
+        println!("{}\n", msg);
+    }
     while let Some(msg) = read_msg() {
         let stream = conv.send_message_streaming(msg).await?;
         print_stream(stream).await;
