@@ -24,9 +24,19 @@ pub enum State {
     Start {
         my_state: Arc<MyState>,
     },
-    SelectTalk {
+    InitTalk {
         my_state: Arc<MyState>,
         prev: Option<MessageId>,
+    },
+    ChooseLevel {
+        my_state: Arc<MyState>,
+        prev: Option<MessageId>,
+        talk: Talk,
+    },
+    SetLevel {
+        my_state: Arc<MyState>,
+        prev: Option<MessageId>,
+        talk: Talk,
     },
     DoTalk {
         my_state: Arc<MyState>,
@@ -71,7 +81,23 @@ pub fn schema(
         .branch(dptree::endpoint(invalid_state));
 
     let callback_query_handler = Update::filter_callback_query()
-        .branch(case![State::SelectTalk { my_state, prev }].endpoint(start_talk));
+        .branch(case![State::InitTalk { my_state, prev }].endpoint(init_talk))
+        .branch(
+            case![State::ChooseLevel {
+                my_state,
+                prev,
+                talk
+            }]
+            .endpoint(choose_level),
+        )
+        .branch(
+            case![State::SetLevel {
+                my_state,
+                prev,
+                talk
+            }]
+            .endpoint(set_level),
+        );
 
     dialogue::enter::<Update, InMemStorage<State>, State, _>()
         .branch(message_handler)
@@ -136,9 +162,7 @@ async fn select_talk(bot: Bot, dialogue: MyDialogue, my_state: Arc<MyState>) -> 
         .reply_markup(InlineKeyboardMarkup::new(talks))
         .await?;
     let prev = Some(sent.id);
-    dialogue
-        .update(State::SelectTalk { my_state, prev })
-        .await?;
+    dialogue.update(State::InitTalk { my_state, prev }).await?;
     Ok(())
 }
 
@@ -150,22 +174,115 @@ async fn clean_buttons(bot: Bot, chat_id: ChatId, m_id: Option<MessageId>) -> Ha
     Ok(())
 }
 
-async fn start_talk(
+async fn init_talk(
     bot: Bot,
     dialogue: MyDialogue,
     q: CallbackQuery,
     tup_state: (Arc<MyState>, Option<MessageId>),
 ) -> HandlerResult {
+    let (my_state, prev) = tup_state;
+    let chat_id = dialogue.chat_id();
+    clean_buttons(bot.clone(), chat_id, prev).await?;
     let talk = q.data.unwrap_or_default();
     let talk = Talk::from_str(&talk).unwrap_or_default();
-    let (my_state, m_id) = tup_state;
+    match talk {
+        Talk::LangPractice { .. } => choose_lang(bot, dialogue, talk, my_state).await,
+        Talk::Basic => start_talk(bot, dialogue, talk, my_state).await,
+    }
+}
+
+async fn choose_lang(
+    bot: Bot,
+    dialogue: MyDialogue,
+    talk: Talk,
+    my_state: Arc<MyState>,
+) -> HandlerResult {
+    let langs_per_row = 3;
     let chat_id = dialogue.chat_id();
-    clean_buttons(bot.clone(), chat_id, m_id).await?;
-    let talk = Talk::LangPractice {
-        lang: Lang::German,
-        level: LangLevel::B2,
-    };
-    // let talk = Talk::Basic;
+    let langs: Vec<Lang> = Lang::iter().collect();
+    let langs = langs.chunks(langs_per_row).map(|row| {
+        row.iter()
+            .map(|lang| lang.to_string())
+            .map(|lang_cmd| InlineKeyboardButton::callback(lang_cmd.clone(), lang_cmd))
+    });
+    let txt_msg = "Choose the language:".to_string();
+    let sent = bot
+        .send_message(chat_id, txt_msg)
+        .reply_markup(InlineKeyboardMarkup::new(langs))
+        .await?;
+    let prev = Some(sent.id);
+    dialogue
+        .update(State::ChooseLevel {
+            my_state,
+            prev,
+            talk,
+        })
+        .await?;
+    Ok(())
+}
+
+async fn choose_level(
+    bot: Bot,
+    dialogue: MyDialogue,
+    q: CallbackQuery,
+    tup_state: (Arc<MyState>, Option<MessageId>, Talk),
+) -> HandlerResult {
+    let (my_state, prev, mut talk) = tup_state;
+    let chat_id = dialogue.chat_id();
+    clean_buttons(bot.clone(), chat_id, prev).await?;
+    let new_lang = q.data.unwrap_or_default();
+    let new_lang = Lang::from_str(&new_lang).unwrap_or_default();
+    if let Talk::LangPractice { ref mut lang, .. } = talk {
+        *lang = new_lang;
+    }
+    let levs_per_row = 3;
+    let chat_id = dialogue.chat_id();
+    let levs: Vec<LangLevel> = LangLevel::iter().collect();
+    let levs = levs.chunks(levs_per_row).map(|row| {
+        row.iter()
+            .map(|lev| lev.to_string())
+            .map(|lev_cmd| InlineKeyboardButton::callback(lev_cmd.clone(), lev_cmd))
+    });
+    let txt_msg = "Choose your level:".to_string();
+    let sent = bot
+        .send_message(chat_id, txt_msg)
+        .reply_markup(InlineKeyboardMarkup::new(levs))
+        .await?;
+    let prev = Some(sent.id);
+    dialogue
+        .update(State::SetLevel {
+            my_state,
+            prev,
+            talk,
+        })
+        .await?;
+    Ok(())
+}
+
+async fn set_level(
+    bot: Bot,
+    dialogue: MyDialogue,
+    q: CallbackQuery,
+    tup_state: (Arc<MyState>, Option<MessageId>, Talk),
+) -> HandlerResult {
+    let (my_state, prev, mut talk) = tup_state;
+    let chat_id = dialogue.chat_id();
+    clean_buttons(bot.clone(), chat_id, prev).await?;
+    let new_lev = q.data.unwrap_or_default();
+    let new_lev = LangLevel::from_str(&new_lev).unwrap_or_default();
+    if let Talk::LangPractice { ref mut level, .. } = talk {
+        *level = new_lev;
+    }
+    start_talk(bot, dialogue, talk, my_state).await
+}
+
+async fn start_talk(
+    bot: Bot,
+    dialogue: MyDialogue,
+    talk: Talk,
+    my_state: Arc<MyState>,
+) -> HandlerResult {
+    let chat_id = dialogue.chat_id();
     let chat_client = my_state.chat_conv.chat_client.clone();
     let ts = talk.get_conv(&chat_client).await?;
     let conv = Some(ts.conv);
