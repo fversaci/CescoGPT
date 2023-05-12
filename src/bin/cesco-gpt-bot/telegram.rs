@@ -156,7 +156,7 @@ async fn select_talk(bot: Bot, dialogue: MyDialogue, my_state: Arc<MyState>) -> 
             .map(|talk| talk.to_string())
             .map(|talk_cmd| InlineKeyboardButton::callback(talk_cmd.clone(), talk_cmd))
     });
-    let txt_msg = "Choose the talk:".to_string();
+    let txt_msg = "Choose the conversation:".to_string();
     let sent = bot
         .send_message(chat_id, txt_msg)
         .reply_markup(InlineKeyboardMarkup::new(talks))

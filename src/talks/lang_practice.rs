@@ -29,9 +29,12 @@ pub async fn get_conv(
     level: &LangLevel,
 ) -> Result<TalkStart, Error> {
     let sys_msg = "You are CescoGPT, an AI to practice conversation in \
-    foreign languages. You always reply by first correcting \
-    the previous message you received and you always end your \
-    response with a question. You are concise and reply shortly.";
+    foreign languages. You always reply, using the foreign language, by \
+    1. producing the correction to the previous message you received, \
+    formatting it in this way: \
+    Correction: `{corrected message}`, \
+    2. replying to the message and 3. you always end your \
+    response with a related question.";
     let msg = format!("We'll talk in {level} level {lang}. I'll start the conversation.");
 
     let mut conv = client.new_conversation_directed(sys_msg);
