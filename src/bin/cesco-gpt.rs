@@ -34,21 +34,31 @@ fn read_msg() -> Option<String> {
     }
 }
 
-async fn print_stream(stream: impl Stream<Item = ResponseChunk>) {
-    stream
-        .for_each(|each| async move {
-            if let ResponseChunk::Content {
+async fn print_stream(mut stream: impl Stream<Item = ResponseChunk> + std::marker::Unpin) -> Option<ChatMessage> {
+    let mut output: Vec<ResponseChunk> = Vec::new();
+    while let Some(chunk) = stream.next().await {
+        match chunk {
+            ResponseChunk::Content {
                 delta,
-                response_index: _,
-            } = each
-            {
-                // Printing part of response without the newline
+                response_index,
+            } => {
                 print!("{delta}");
                 stdout().lock().flush().unwrap();
+                output.push(ResponseChunk::Content {
+                    delta,
+                    response_index,
+                });
             }
-        })
-        .await;
+            other => output.push(other),
+        }
+    }
     println!("\n");
+    let msgs = ChatMessage::from_response_chunks(output);
+    if msgs.is_empty() {
+        None
+    } else {
+        Some(msgs[0].to_owned())
+    }
 }
 
 #[tokio::main]
@@ -64,7 +74,10 @@ async fn main() -> Result<()> {
     }
     while let Some(msg) = read_msg() {
         let stream = conv.send_message_streaming(msg).await?;
-        print_stream(stream).await;
+        let msg = print_stream(stream).await;
+        if let Some(msg) = msg {
+            conv.history.push(msg);
+        }
     }
 
     Ok(())
