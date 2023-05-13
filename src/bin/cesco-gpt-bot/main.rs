@@ -1,7 +1,6 @@
 use anyhow::Result;
 use chatgpt::client::ChatGPT;
 use chatgpt::converse::Conversation;
-use clap::Parser;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
@@ -10,16 +9,10 @@ use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
 
 mod telegram;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// Insert your openAI API key
-    api_key: String,
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MyBotConfig {
     id_whitelist: HashSet<ChatId>,
+    openai_api_key: String,
 }
 
 pub struct ChatConv {
@@ -65,8 +58,7 @@ async fn main() -> Result<()> {
     let bot = Bot::from_env();
     let my_conf = get_conf();
     log::debug!("{my_conf:?}");
-    let args = Args::parse();
-    let key = args.api_key;
+    let key = &my_conf.openai_api_key;
     let chat_client = ChatGPT::new(key)?;
     let my_state = Arc::new(MyState {
         my_conf,

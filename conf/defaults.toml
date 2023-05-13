@@ -1,1 +1,2 @@
+openai_api_key = "sk-__YOUR_API_KEY_HERE___"
 id_whitelist = []

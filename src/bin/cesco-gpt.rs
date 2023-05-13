@@ -3,16 +3,30 @@ use chatgpt::prelude::*;
 use clap::Parser;
 use futures_util::Stream;
 use futures_util::StreamExt;
+use serde::{Deserialize, Serialize};
+use std::fs;
 use std::io::{self, stdout, BufRead, Write};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Insert your openAI API key
-    api_key: String,
     /// Choose which conversation to start
     #[command(subcommand)]
     talk: Talk,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MyCLIConfig {
+    openai_api_key: String,
+}
+
+fn get_conf() -> MyCLIConfig {
+    let fname = "conf/defaults.toml";
+    let conf_txt = fs::read_to_string(fname)
+        .unwrap_or_else(|_| panic!("Cannot find configuration file: {}", fname));
+    let my_conf: MyCLIConfig = toml::from_str(&conf_txt)
+        .unwrap_or_else(|err| panic!("Unable to parse configuration file {}: {}", fname, err));
+    my_conf
 }
 
 fn read_msg() -> Option<String> {
@@ -34,7 +48,9 @@ fn read_msg() -> Option<String> {
     }
 }
 
-async fn print_stream(mut stream: impl Stream<Item = ResponseChunk> + std::marker::Unpin) -> Option<ChatMessage> {
+async fn print_stream(
+    mut stream: impl Stream<Item = ResponseChunk> + std::marker::Unpin,
+) -> Option<ChatMessage> {
     let mut output: Vec<ResponseChunk> = Vec::new();
     while let Some(chunk) = stream.next().await {
         match chunk {
@@ -64,7 +80,9 @@ async fn print_stream(mut stream: impl Stream<Item = ResponseChunk> + std::marke
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    let key = args.api_key;
+    let my_conf = get_conf();
+    log::debug!("{my_conf:?}");
+    let key = &my_conf.openai_api_key;
     let client = ChatGPT::new(key)?;
     let talk = args.talk;
     let ts = talk.get_conv(&client).await?;
