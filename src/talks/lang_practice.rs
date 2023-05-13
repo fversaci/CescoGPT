@@ -10,6 +10,9 @@ pub enum Lang {
     English,
     German,
     French,
+    Spanish,
+    Catalan,
+    Latin,
 }
 
 #[derive(Default, Display, Debug, Clone, EnumIter, EnumString, ValueEnum)]

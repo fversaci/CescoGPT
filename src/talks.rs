@@ -16,9 +16,9 @@ pub struct TalkStart {
 pub enum Talk {
     /// Generic Chat-GPT prompt
     #[default]
-    Basic,
+    Generic,
     /// Practice conversation in chosen language
-    LangPractice {
+    LanguagePractice {
         #[arg(value_enum)]
         lang: Lang,
         #[arg(value_enum)]
@@ -29,8 +29,8 @@ pub enum Talk {
 impl Talk {
     pub async fn get_conv(&self, client: &ChatGPT) -> Result<TalkStart, Error> {
         match self {
-            Talk::Basic => basic::get_conv(client).await,
-            Talk::LangPractice { lang, level } => {
+            Talk::Generic => basic::get_conv(client).await,
+            Talk::LanguagePractice { lang, level } => {
                 lang_practice::get_conv(client, lang, level).await
             }
         }

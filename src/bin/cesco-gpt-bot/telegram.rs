@@ -186,8 +186,8 @@ async fn init_talk(
     let talk = q.data.unwrap_or_default();
     let talk = Talk::from_str(&talk).unwrap_or_default();
     match talk {
-        Talk::LangPractice { .. } => choose_lang(bot, dialogue, talk, my_state).await,
-        Talk::Basic => start_talk(bot, dialogue, talk, my_state).await,
+        Talk::LanguagePractice { .. } => choose_lang(bot, dialogue, talk, my_state).await,
+        Talk::Generic => start_talk(bot, dialogue, talk, my_state).await,
     }
 }
 
@@ -232,10 +232,10 @@ async fn choose_level(
     clean_buttons(bot.clone(), chat_id, prev).await?;
     let new_lang = q.data.unwrap_or_default();
     let new_lang = Lang::from_str(&new_lang).unwrap_or_default();
-    if let Talk::LangPractice { ref mut lang, .. } = talk {
+    if let Talk::LanguagePractice { ref mut lang, .. } = talk {
         *lang = new_lang;
     }
-    let levs_per_row = 3;
+    let levs_per_row = 2;
     let chat_id = dialogue.chat_id();
     let levs: Vec<LangLevel> = LangLevel::iter().collect();
     let levs = levs.chunks(levs_per_row).map(|row| {
@@ -270,7 +270,7 @@ async fn set_level(
     clean_buttons(bot.clone(), chat_id, prev).await?;
     let new_lev = q.data.unwrap_or_default();
     let new_lev = LangLevel::from_str(&new_lev).unwrap_or_default();
-    if let Talk::LangPractice { ref mut level, .. } = talk {
+    if let Talk::LanguagePractice { ref mut level, .. } = talk {
         *level = new_lev;
     }
     start_talk(bot, dialogue, talk, my_state).await
