@@ -16,7 +16,9 @@ pub struct TalkStart {
 pub enum Talk {
     /// Generic Chat-GPT prompt
     #[default]
+    #[strum(serialize = "Generic ChatGPT")]
     Generic,
+    #[strum(serialize = "Language Practice")]
     /// Practice conversation in chosen language
     LanguagePractice {
         #[arg(value_enum)]
