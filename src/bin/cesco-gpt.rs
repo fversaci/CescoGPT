@@ -5,7 +5,7 @@ use futures_util::Stream;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::io::{self, stdout, BufRead, Write};
+use std::io::{stdout, Write};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -30,10 +30,9 @@ fn get_conf() -> MyCLIConfig {
 }
 
 fn read_msg() -> Option<String> {
-    let lines = io::stdin().lock().lines();
+    let mut rl = rustyline::DefaultEditor::new().ok()?;
     let mut msg = String::new();
-    for line in lines {
-        let line = line.expect("Error while reading line from stdin.");
+    while let Ok(line) = rl.readline("") {
         if line.is_empty() {
             break;
         }
