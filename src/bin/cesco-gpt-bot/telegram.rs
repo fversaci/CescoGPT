@@ -2,6 +2,9 @@ use crate::{ChatConv, HashSet, MyState};
 use anyhow::Result;
 use cesco_gpt::talks::lang_practice::{Lang, LangLevel};
 use cesco_gpt::talks::Talk;
+use chatgpt::prelude::*;
+use futures_util::Stream;
+use futures_util::StreamExt;
 use std::str::FromStr;
 use std::sync::Arc;
 use strum::IntoEnumIterator;
@@ -309,11 +312,12 @@ async fn do_talk(
     let chat_id = msg.chat.id;
     let msg = msg.text().unwrap().to_string();
     let mut conv = chat_conv.conv.unwrap();
-    let response = conv.send_message(msg);
-    let response = response.await?;
-    // send reply as markdown
-    let msg = &response.message().content;
-    send_markdown(bot, chat_id, msg).await?;
+    let stream = conv.send_message_streaming(msg).await?;
+    let resp = send_stream(bot, chat_id, stream).await;
+    // save reply in chat history
+    if let Some(resp) = resp {
+        conv.history.push(resp);
+    }
     let chat_client = my_state.chat_conv.chat_client.clone();
     let chat_conv = ChatConv {
         chat_client,
@@ -340,4 +344,69 @@ async fn send_markdown(bot: Bot, chat_id: ChatId, msg: &str) -> HandlerResult {
     };
 
     Ok(())
+}
+
+async fn update_markdown(bot: Bot, chat_id: ChatId, m_id: MessageId, msg: &str) -> HandlerResult {
+    let md = payloads::EditMessageText::new(chat_id, m_id, msg);
+    type Sender = JsonRequest<payloads::EditMessageText>;
+    let sent = Sender::new(bot.clone(), md.clone().parse_mode(ParseMode::Markdown)).await;
+    // If markdown cannot be parsed, send it as raw text
+    if sent.is_err() {
+        Sender::new(bot.clone(), md.clone()).await?;
+        log::debug!("Cannot parse markdown: {}", sent.err().unwrap());
+    };
+
+    Ok(())
+}
+
+async fn update_text(bot: Bot, chat_id: ChatId, m_id: MessageId, msg: &str) -> HandlerResult {
+    bot.edit_message_text(chat_id, m_id, msg).await?;
+    Ok(())
+}
+
+async fn send_stream(
+    bot: Bot,
+    chat_id: ChatId,
+    mut stream: impl Stream<Item = ResponseChunk> + std::marker::Unpin,
+) -> Option<ChatMessage> {
+    // send message zero
+    let zero = bot.send_message(chat_id, "...").await.ok()?;
+    let m_id = zero.id;
+    // send updates
+    let mut output: Vec<ResponseChunk> = Vec::new();
+    let mut msg = String::new();
+    let mut cow: u64 = 0;
+    let block = 32;
+    while let Some(chunk) = stream.next().await {
+        match chunk {
+            ResponseChunk::Content {
+                delta,
+                response_index,
+            } => {
+                msg.push_str(&delta);
+                output.push(ResponseChunk::Content {
+                    delta,
+                    response_index,
+                });
+                // send/update msg every block token
+                cow += 1;
+                if cow % block == 0 {
+                    update_markdown(bot.clone(), chat_id, m_id, &msg)
+                        .await
+                        .ok()?;
+                }
+            }
+            other => output.push(other),
+        }
+    }
+    // send/update final msg
+    update_markdown(bot.clone(), chat_id, m_id, &msg)
+        .await
+        .ok()?;
+    let msgs = ChatMessage::from_response_chunks(output);
+    if msgs.is_empty() {
+        None
+    } else {
+        Some(msgs[0].to_owned())
+    }
 }
