@@ -359,11 +359,6 @@ async fn update_markdown(bot: Bot, chat_id: ChatId, m_id: MessageId, msg: &str) 
     Ok(())
 }
 
-async fn update_text(bot: Bot, chat_id: ChatId, m_id: MessageId, msg: &str) -> HandlerResult {
-    bot.edit_message_text(chat_id, m_id, msg).await?;
-    Ok(())
-}
-
 async fn send_stream(
     bot: Bot,
     chat_id: ChatId,
