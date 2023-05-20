@@ -3,7 +3,7 @@
 ## Overview
 
 This bot, written in Rust, allows users to either access ChatGPT for
-for plain, standard queries, or via a predefined prompt, tailored to practice
+plain, standard queries, or via a predefined prompt, tailored to practice
 conversation in a foreign language. The prompt used is this:
 ```rust
 let sys_msg = "You are CescoGPT, an AI to practice conversation in \
@@ -38,8 +38,8 @@ id_whitelist = [
 ]
 ```
 
-Note: *If the list is left empty, filtering is not performed* (i.e., all
-users will be able to use the bot).
+Note: *If the list is left empty, filtering is not performed* (i.e.,
+all users will be able to use the bot).
 
 ## Running the bot
 
