@@ -20,7 +20,7 @@ let msg = format!("We'll talk in {level} level {lang}. I'll start the conversati
 
 ##  Setting the API key
 
-In order to use the bot you need a **paid** openAI API key, which must be
+In order to use the bot you need a *paid* openAI API key, which must be
 filled in the configuration file [conf/defaults.toml](conf/defaults.toml):
 ```toml
 openai_api_key = "sk-__YOUR_API_KEY_HERE___"
@@ -32,13 +32,13 @@ The configuration file [conf/defaults.toml](conf/defaults.toml)
 contains an `id_whitelist` field, which can be filled with a list of
 allowed Telegram user_ids:
 ```toml
-  id_whitelist: [
-    123456789,  # myself
-    987654321,  # my cat
-  ]
+id_whitelist: [
+  123456789,  # myself
+  987654321,  # my cat
+]
 ```
 
-**If the list is left empty, filtering is not performed** (i.e., all
+Note: *If the list is left empty, filtering is not performed* (i.e., all
 users will be able to use the bot).
 
 ## Running the bot
@@ -59,8 +59,8 @@ cargo run --bin cesco-gpt -- language-practice german b2  # practice B2 German
 cargo run --bin cesco-gpt -- -h  # get detailed help
 ```
 The CLI concatenates consecutive lines and sends them as a message
-once an empty line is encountered (i.e., **press enter twice to send
-the message**). An empty message ends the conversation.
+once an empty line is encountered (i.e., *press enter twice to send
+the message*). An empty message ends the conversation.
 
 ## Customization
 
