@@ -396,6 +396,8 @@ async fn send_stream(
                 response_index,
             } => {
                 msg.push_str(&delta);
+                let mut partial_msg = msg.clone();
+                partial_msg.push_str("\n...");
                 output.push(ResponseChunk::Content {
                     delta,
                     response_index,
@@ -403,7 +405,7 @@ async fn send_stream(
                 // send/update msg every block token
                 let now = Utc::now();
                 if now - oldtime > mintime {
-                    update_markdown(bot.clone(), chat_id, m_id, &msg)
+                    update_markdown(bot.clone(), chat_id, m_id, &partial_msg)
                         .await
                         .ok()?;
                     oldtime = now;
