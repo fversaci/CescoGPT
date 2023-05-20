@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.71"
 chatgpt_rs = { version = "1.1.6", features = ["streams"] }
+chrono = "0.4.24"
 clap = { version = "4.2.7", features = ["derive"] }
 futures-util = "0.3.28"
 log = "0.4.17"

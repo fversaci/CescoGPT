@@ -3,6 +3,8 @@ use anyhow::Result;
 use cesco_gpt::talks::lang_practice::{Lang, LangLevel};
 use cesco_gpt::talks::Talk;
 use chatgpt::prelude::*;
+use chrono::prelude::*;
+use chrono::Duration;
 use futures_util::Stream;
 use futures_util::StreamExt;
 use std::str::FromStr;
@@ -370,8 +372,8 @@ async fn send_stream(
     // send updates
     let mut output: Vec<ResponseChunk> = Vec::new();
     let mut msg = String::new();
-    let mut cow: u64 = 0;
-    let block = 32;
+    let mut oldtime = Utc::now();
+    let mintime = Duration::milliseconds(2500);
     while let Some(chunk) = stream.next().await {
         match chunk {
             ResponseChunk::Content {
@@ -384,11 +386,12 @@ async fn send_stream(
                     response_index,
                 });
                 // send/update msg every block token
-                cow += 1;
-                if cow % block == 0 {
+                let now = Utc::now();
+                if now - oldtime > mintime {
                     update_markdown(bot.clone(), chat_id, m_id, &msg)
                         .await
                         .ok()?;
+                    oldtime = now;
                 }
             }
             other => output.push(other),
