@@ -396,8 +396,8 @@ async fn send_stream(
                 response_index,
             } => {
                 msg.push_str(&delta);
-                let mut partial_msg = msg.clone();
-                partial_msg.push_str("\n...");
+                let msg_len = msg.len();  // save length
+                msg.push_str("\n...");
                 output.push(ResponseChunk::Content {
                     delta,
                     response_index,
@@ -405,11 +405,13 @@ async fn send_stream(
                 // send/update msg every block token
                 let now = Utc::now();
                 if now - oldtime > mintime {
-                    update_markdown(bot.clone(), chat_id, m_id, &partial_msg)
+                    update_markdown(bot.clone(), chat_id, m_id, &msg)
                         .await
                         .ok()?;
                     oldtime = now;
                 }
+                // restore message without trailing dots
+                msg.truncate(msg_len);
             }
             other => output.push(other),
         }
