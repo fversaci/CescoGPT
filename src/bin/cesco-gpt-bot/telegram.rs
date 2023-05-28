@@ -306,10 +306,11 @@ async fn start_talk(
     let chat_client = my_state.chat_conv.chat_client.clone();
     let ts = talk.get_conv(&chat_client).await?;
     let conv = Some(ts.conv);
+    let presuff = ts.presuff;
     if let Some(msg) = ts.msg {
         send_markdown(bot, chat_id, &msg).await?;
     }
-    let chat_conv = ChatConv { chat_client, conv };
+    let chat_conv = ChatConv { chat_client, conv, presuff };
     dialogue
         .update(State::DoTalk {
             my_state,
@@ -336,9 +337,11 @@ async fn do_talk(
         conv.history.push(resp);
     }
     let chat_client = my_state.chat_conv.chat_client.clone();
+    let presuff = my_state.chat_conv.presuff.clone();
     let chat_conv = ChatConv {
         chat_client,
         conv: Some(conv),
+        presuff,
     };
     dialogue
         .update(State::DoTalk {
@@ -396,7 +399,7 @@ async fn send_stream(
                 response_index,
             } => {
                 msg.push_str(&delta);
-                let msg_len = msg.len();  // save length
+                let msg_len = msg.len(); // save length
                 msg.push_str("\n...");
                 output.push(ResponseChunk::Content {
                     delta,

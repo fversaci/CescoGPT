@@ -25,6 +25,7 @@ use lang_practice::{Lang, LangLevel};
 pub struct TalkStart {
     pub conv: Conversation,
     pub msg: Option<String>,
+    pub presuff: (String, String),
 }
 
 #[derive(Default, Display, Debug, Clone, EnumIter, EnumString, Subcommand)]

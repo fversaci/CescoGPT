@@ -44,20 +44,25 @@ fn get_conf() -> MyCLIConfig {
     my_conf
 }
 
-fn read_msg() -> Option<String> {
+fn read_msg(presuff: &(String, String)) -> Option<String> {
     let mut rl = rustyline::DefaultEditor::new().ok()?;
-    let mut msg = String::new();
+    let (pre, suff) = presuff; // initial and final delimiters
+    let mut msg = pre.clone();
+    let zero_sz = msg.len();
     while let Ok(line) = rl.readline("") {
         if line.is_empty() {
             break;
         }
         // add line to message
-        msg.push(' ');
+        msg.push('\n');
         msg.push_str(&line);
     }
-    if msg.is_empty() {
+    if msg.len() == zero_sz {
         None
     } else {
+        // add final delimiter
+        msg.push('\n');
+        msg.push_str(suff);
         Some(msg)
     }
 }
@@ -101,10 +106,11 @@ async fn main() -> Result<()> {
     let talk = args.talk;
     let ts = talk.get_conv(&client).await?;
     let mut conv = ts.conv;
+    let presuff = ts.presuff;
     if let Some(msg) = ts.msg {
         println!("{}\n", msg);
     }
-    while let Some(msg) = read_msg() {
+    while let Some(msg) = read_msg(&presuff) {
         let stream = conv.send_message_streaming(msg).await?;
         let msg = print_stream(stream).await;
         if let Some(msg) = msg {

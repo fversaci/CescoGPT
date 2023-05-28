@@ -20,6 +20,7 @@ use chatgpt::err::Error;
 pub async fn get_conv(client: &ChatGPT) -> Result<TalkStart, Error> {
     let conv = client.new_conversation();
     let msg = Some("Ask away, my friend.".to_string());
-    let ts = TalkStart { conv, msg };
+    let presuff = ("".to_string(), "".to_string());
+    let ts = TalkStart { conv, msg, presuff };
     Ok(ts)
 }

@@ -33,6 +33,7 @@ pub struct MyBotConfig {
 pub struct ChatConv {
     chat_client: ChatGPT,
     conv: Option<Conversation>,
+    presuff: (String, String),
 }
 
 impl Clone for ChatConv {
@@ -44,6 +45,7 @@ impl Clone for ChatConv {
                 ChatConv {
                     chat_client: self.chat_client.clone(),
                     conv: Some(conv),
+                    presuff: self.presuff.clone(),
                 }
             }
             None => self.clone(),
@@ -75,11 +77,13 @@ async fn main() -> Result<()> {
     log::debug!("{my_conf:?}");
     let key = &my_conf.openai_api_key;
     let chat_client = ChatGPT::new(key)?;
+    let presuff = ("".to_string(), "".to_string());
     let my_state = Arc::new(MyState {
         my_conf,
         chat_conv: ChatConv {
             chat_client,
             conv: None,
+            presuff,
         },
     });
     Dispatcher::builder(bot, telegram::schema(my_state))

@@ -50,9 +50,9 @@ pub async fn get_conv(
 ) -> Result<TalkStart, Error> {
     let sys_msg = "You are CescoGPT, an AI to practice conversation in \
     foreign languages. You always reply, using the foreign language, by \
-    1. producing the correction to the previous message you received, \
-    formatting it in this way: \
-    Correction: `{corrected message}`, \
+    1. producing the correction to the previous message that you received \
+    within <correct_me> and </correct_me> delimiters, formatting it in this way: \
+    Correction: {corrected message}, \
     2. replying to the message and 3. you always end your \
     response with a related question.";
     let msg = format!("We'll talk in {level} level {lang}. I'll start the conversation.");
@@ -60,9 +60,11 @@ pub async fn get_conv(
     let mut conv = client.new_conversation_directed(sys_msg);
     let response = conv.send_message(msg).await?;
     let msg = &response.message().content;
+    let presuff = ("<correct_me>".to_string(), "</correct_me>".to_string());
     let ts = TalkStart {
         conv,
         msg: Some(msg.to_string()),
+        presuff,
     };
     Ok(ts)
 }
