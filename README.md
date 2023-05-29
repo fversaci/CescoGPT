@@ -4,17 +4,8 @@
 
 This bot, written in Rust, allows users to either access ChatGPT for
 plain, standard queries, or via a predefined prompt, tailored to practice
-conversation in a foreign language. The prompt used is this:
-```rust
-let sys_msg = "You are CescoGPT, an AI to practice conversation in \
-foreign languages. You always reply, using the foreign language, by \
-1. producing the correction to the previous message you received, \
-formatting it in this way: \
-Correction: `{corrected message}`, \
-2. replying to the message and 3. you always end your \
-response with a related question.";
-let msg = format!("We'll talk in {level} level {lang}. I'll start the conversation.");
-```
+conversation in a foreign language. The prompt used can be seen
+[here](src/talks/lang_practice.rs#L51).
 
 ## Configuration
 
@@ -75,6 +66,10 @@ some time it might forget to output your text correction, especially
 if you ask questions in your messages. If you have better prompts for
 language practice, feel free to suggest them via email or by opening
 an issue.
+
+Sometimes messages to Telegram might get lost and only three dots are shown
+as a response. In that case just copy and paste your latest message and carry
+on with the conversation.
 
 ## Author
 
