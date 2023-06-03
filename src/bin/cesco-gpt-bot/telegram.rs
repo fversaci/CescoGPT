@@ -336,7 +336,6 @@ async fn do_talk(
     let mut msg_out = pre;
     msg_out.push_str(msg.text().unwrap());
     msg_out.push_str(&suff);
-    println!("{}", msg_out);
     let mut conv = chat_conv.conv.unwrap();
     let stream = conv.send_message_streaming(msg_out).await?;
     let resp = send_stream(bot, chat_id, stream).await;
