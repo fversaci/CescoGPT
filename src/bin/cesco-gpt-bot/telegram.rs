@@ -303,14 +303,18 @@ async fn start_talk(
     my_state: Arc<MyState>,
 ) -> HandlerResult {
     let chat_id = dialogue.chat_id();
-    let chat_client = my_state.chat_conv.chat_client.clone();
+    let chat_client = my_state.chat_client.clone();
     let ts = talk.get_conv(&chat_client).await?;
     let conv = Some(ts.conv);
     let presuff = ts.presuff;
     if let Some(msg) = ts.msg {
         send_markdown(bot, chat_id, &msg).await?;
     }
-    let chat_conv = ChatConv { chat_client, conv, presuff };
+    let chat_conv = ChatConv {
+        chat_client,
+        conv,
+        presuff,
+    };
     dialogue
         .update(State::DoTalk {
             my_state,
@@ -328,20 +332,21 @@ async fn do_talk(
 ) -> HandlerResult {
     let (my_state, chat_conv) = tup_state;
     let chat_id = msg.chat.id;
-    let msg = msg.text().unwrap().to_string();
+    let (pre, suff) = chat_conv.presuff.clone();
+    let mut msg_out = pre;
+    msg_out.push_str(msg.text().unwrap());
+    msg_out.push_str(&suff);
+    println!("{}", msg_out);
     let mut conv = chat_conv.conv.unwrap();
-    let stream = conv.send_message_streaming(msg).await?;
+    let stream = conv.send_message_streaming(msg_out).await?;
     let resp = send_stream(bot, chat_id, stream).await;
     // save reply in chat history
     if let Some(resp) = resp {
         conv.history.push(resp);
     }
-    let chat_client = my_state.chat_conv.chat_client.clone();
-    let presuff = my_state.chat_conv.presuff.clone();
     let chat_conv = ChatConv {
-        chat_client,
         conv: Some(conv),
-        presuff,
+        ..chat_conv
     };
     dialogue
         .update(State::DoTalk {

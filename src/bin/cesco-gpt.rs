@@ -54,14 +54,13 @@ fn read_msg(presuff: &(String, String)) -> Option<String> {
             break;
         }
         // add line to message
-        msg.push('\n');
         msg.push_str(&line);
+        msg.push('\n');
     }
     if msg.len() == zero_sz {
         None
     } else {
         // add final delimiter
-        msg.push('\n');
         msg.push_str(suff);
         Some(msg)
     }

@@ -56,7 +56,7 @@ impl Clone for ChatConv {
 #[derive(Clone)]
 pub struct MyState {
     my_conf: MyBotConfig,
-    chat_conv: ChatConv,
+    chat_client: ChatGPT,
 }
 
 fn get_conf() -> MyBotConfig {
@@ -77,14 +77,9 @@ async fn main() -> Result<()> {
     log::debug!("{my_conf:?}");
     let key = &my_conf.openai_api_key;
     let chat_client = ChatGPT::new(key)?;
-    let presuff = ("".to_string(), "".to_string());
     let my_state = Arc::new(MyState {
         my_conf,
-        chat_conv: ChatConv {
-            chat_client,
-            conv: None,
-            presuff,
-        },
+        chat_client,
     });
     Dispatcher::builder(bot, telegram::schema(my_state))
         .dependencies(dptree::deps![InMemStorage::<telegram::State>::new()])

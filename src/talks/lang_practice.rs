@@ -60,7 +60,7 @@ pub async fn get_conv(
     let mut conv = client.new_conversation_directed(sys_msg);
     let response = conv.send_message(msg).await?;
     let msg = &response.message().content;
-    let presuff = ("<correct_me>".to_string(), "</correct_me>".to_string());
+    let presuff = ("<correct_me>\n".to_string(), "\n</correct_me>".to_string());
     let ts = TalkStart {
         conv,
         msg: Some(msg.to_string()),
