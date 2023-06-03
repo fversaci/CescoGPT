@@ -61,12 +61,6 @@ If you want to modify the default available languages, just edit the
 
 ## Known problems
 
-The behaviour for language practice is sometimes erratic, e.g., after
-some time it might forget to output your text correction, especially
-if you ask questions in your messages. If you have better prompts for
-language practice, feel free to suggest them via email or by opening
-an issue.
-
 Sometimes messages to Telegram might get lost and only three dots are shown
 as a response. In that case just copy and paste your latest message and carry
 on with the conversation.
