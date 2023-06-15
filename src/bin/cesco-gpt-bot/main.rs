@@ -14,8 +14,7 @@
   limitations under the License.
 **************************************************************************/
 use anyhow::Result;
-use chatgpt::client::ChatGPT;
-use chatgpt::converse::Conversation;
+use chatgpt::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
@@ -76,7 +75,12 @@ async fn main() -> Result<()> {
     let my_conf = get_conf();
     log::debug!("{my_conf:?}");
     let key = &my_conf.openai_api_key;
-    let chat_client = ChatGPT::new(key)?;
+    let gpt_ver = ChatGPTEngine::Custom("gpt-3.5-turbo-0613");
+    let gpt_conf = ModelConfigurationBuilder::default()
+        .engine(gpt_ver)
+        .build()
+        .unwrap();
+    let chat_client = ChatGPT::new_with_config(key, gpt_conf)?;
     let my_state = Arc::new(MyState {
         my_conf,
         chat_client,

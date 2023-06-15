@@ -101,7 +101,12 @@ async fn main() -> Result<()> {
     let my_conf = get_conf();
     log::debug!("{my_conf:?}");
     let key = &my_conf.openai_api_key;
-    let client = ChatGPT::new(key)?;
+    let gpt_ver = ChatGPTEngine::Custom("gpt-3.5-turbo-0613");
+    let gpt_conf = ModelConfigurationBuilder::default()
+        .engine(gpt_ver)
+        .build()
+        .unwrap();
+    let client = ChatGPT::new_with_config(key, gpt_conf)?;
     let talk = args.talk;
     let ts = talk.get_conv(&client).await?;
     let mut conv = ts.conv;
