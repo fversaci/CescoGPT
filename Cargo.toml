@@ -7,16 +7,16 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.71"
-chatgpt_rs = { version = "1.1.6", features = ["streams"] }
-chrono = "0.4.24"
-clap = { version = "4.2.7", features = ["derive"] }
+chatgpt_rs = { version = "1.1.10", features = ["streams"] }
+chrono = "0.4.26"
+clap = { version = "4.3.4", features = ["derive"] }
 futures-util = "0.3.28"
-log = "0.4.17"
-pretty_env_logger = "0.4.0"
+log = "0.4.19"
+pretty_env_logger = "0.5.0"
 rustyline = "11.0.0"
-serde = "1.0.163"
+serde = "1.0.164"
 strum = "0.24.1"
 strum_macros = "0.24.3"
 teloxide = { version = "0.12.2", features = ["macros", "auto-send"] }
-tokio = { version = "1.28.1", features = ["full"] }
-toml = "0.7.3"
+tokio = { version = "1.28.2", features = ["full"] }
+toml = "0.7.4"
