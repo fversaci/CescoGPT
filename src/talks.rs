@@ -18,6 +18,7 @@ use chatgpt::converse::Conversation;
 use chatgpt::err::Error;
 use strum_macros::{Display, EnumIter, EnumString};
 mod basic;
+mod correct;
 pub mod lang_practice;
 use clap::Subcommand;
 use lang_practice::{Lang, LangLevel};
@@ -34,13 +35,19 @@ pub enum Talk {
     #[default]
     #[strum(serialize = "Generic ChatGPT")]
     Generic,
-    #[strum(serialize = "Language Practice")]
     /// Practice conversation in chosen language
+    #[strum(serialize = "Language Practice")]
     LanguagePractice {
         #[arg(value_enum)]
         lang: Lang,
         #[arg(value_enum)]
         level: LangLevel,
+    },
+    /// Correct and improve text, as a native speaker
+    #[strum(serialize = "Correct text")]
+    Correct {
+        #[arg(short, long)]
+        native: bool,
     },
 }
 
@@ -51,6 +58,7 @@ impl Talk {
             Talk::LanguagePractice { lang, level } => {
                 lang_practice::get_conv(client, lang, level).await
             }
+            Talk::Correct { native } => correct::get_conv(client, native).await,
         }
     }
 }

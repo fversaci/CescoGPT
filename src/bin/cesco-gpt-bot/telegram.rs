@@ -58,6 +58,11 @@ pub enum State {
         prev: Option<MessageId>,
         talk: Talk,
     },
+    SetNative {
+        my_state: Arc<MyState>,
+        prev: Option<MessageId>,
+        talk: Talk,
+    },
     DoTalk {
         my_state: Arc<MyState>,
         chat_conv: ChatConv,
@@ -117,6 +122,14 @@ pub fn schema(
                 talk
             }]
             .endpoint(set_level),
+        )
+        .branch(
+            case![State::SetNative {
+                my_state,
+                prev,
+                talk
+            }]
+            .endpoint(set_native),
         );
 
     dialogue::enter::<Update, InMemStorage<State>, State, _>()
@@ -208,7 +221,52 @@ async fn init_talk(
     match talk {
         Talk::LanguagePractice { .. } => choose_lang(bot, dialogue, talk, my_state).await,
         Talk::Generic => start_talk(bot, dialogue, talk, my_state).await,
+        Talk::Correct { .. } => choose_native(bot, dialogue, talk, my_state).await,
     }
+}
+
+async fn choose_native(
+    bot: Bot,
+    dialogue: MyDialogue,
+    talk: Talk,
+    my_state: Arc<MyState>,
+) -> HandlerResult {
+    let chat_id = dialogue.chat_id();
+    let yes_no = vec![vec![
+        InlineKeyboardButton::callback("Yes", "true"),
+        InlineKeyboardButton::callback("No", "false"),
+    ]];
+    let txt_msg = "Rephrase as a native speaker?".to_string();
+    let sent = bot
+        .send_message(chat_id, txt_msg)
+        .reply_markup(InlineKeyboardMarkup::new(yes_no))
+        .await?;
+    let prev = Some(sent.id);
+    dialogue
+        .update(State::SetNative {
+            my_state,
+            prev,
+            talk,
+        })
+        .await?;
+    Ok(())
+}
+
+async fn set_native(
+    bot: Bot,
+    dialogue: MyDialogue,
+    q: CallbackQuery,
+    tup_state: (Arc<MyState>, Option<MessageId>, Talk),
+) -> HandlerResult {
+    let (my_state, prev, mut talk) = tup_state;
+    let chat_id = dialogue.chat_id();
+    clean_buttons(bot.clone(), chat_id, prev).await?;
+    let new_nat = q.data.unwrap_or_default();
+    let new_nat = bool::from_str(&new_nat).unwrap_or_default();
+    if let Talk::Correct { ref mut native, .. } = talk {
+        *native = new_nat;
+    }
+    start_talk(bot, dialogue, talk, my_state).await
 }
 
 async fn choose_lang(
