@@ -31,8 +31,11 @@ id_whitelist = [
 ]
 ```
 
-Note: *If the list is left empty, filtering is not performed* (i.e.,
-all users will be able to use the bot).
+Note: *If the list is left empty, no filtering will be applied* (i.e.,
+all users will be able to use the bot). Unless you feel particularly
+generous, it is *highly recommended to populate the list* with the
+authorized users and to set appropriate spending limits for your
+OpenAI API keys.
 
 ## Running the bot
 
@@ -49,6 +52,7 @@ from the shell. Just run with:
 ```bash
 cargo run --bin cesco-gpt -- generic  # generic ChatGPT prompt
 cargo run --bin cesco-gpt -- language-practice german b2  # practice B2 German
+cargo run --bin cesco-gpt -- correct --native  # correct and rephrase as a native speaker
 cargo run --bin cesco-gpt -- -h  # get detailed help
 ```
 The CLI concatenates consecutive lines and sends them as a message
