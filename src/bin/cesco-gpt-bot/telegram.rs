@@ -181,7 +181,7 @@ async fn bouncer(
 }
 
 async fn select_talk(bot: Bot, dialogue: MyDialogue, my_state: Arc<MyState>) -> HandlerResult {
-    let talks_per_row = 3;
+    let talks_per_row = 2;
     let chat_id = dialogue.chat_id();
     let talks: Vec<Talk> = Talk::iter().collect();
     let talks = talks.chunks(talks_per_row).map(|row| {
