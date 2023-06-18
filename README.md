@@ -2,10 +2,12 @@
 
 ## Overview
 
-This bot, written in Rust, allows users to either access ChatGPT for
-plain, standard queries, or via a predefined prompt, tailored to practice
-conversation in a foreign language. The prompt used can be seen
-[here](src/talks/lang_practice.rs#L51).
+This bot, written in Rust, allows users to access ChatGPT
+1. for plain, standard queries;
+2. to practice conversation in a foreign language, via a [predefined
+prompt](src/talks/lang_practice.rs#L51);
+3. to correct and improve texts, via another [predefined
+prompt](src/talks/correct.rs#L21).
 
 ## Configuration
 
