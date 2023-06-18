@@ -17,6 +17,7 @@ rustyline = "11.0.0"
 serde = "1.0.164"
 strum = "0.24.1"
 strum_macros = "0.24.3"
+time = "0.3.22"
 teloxide = { version = "0.12.2", features = ["macros", "auto-send"] }
 tokio = { version = "1.28.2", features = ["full"] }
 toml = "0.7.4"
