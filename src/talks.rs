@@ -44,7 +44,7 @@ pub enum Talk {
         level: LangLevel,
     },
     /// Correct and improve text, as a native speaker
-    #[strum(serialize = "Correct text")]
+    #[strum(serialize = "Correct Text")]
     Correct {
         #[arg(short, long)]
         native: bool,
