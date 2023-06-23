@@ -59,6 +59,14 @@ The CLI concatenates consecutive lines and sends them as a message
 once an empty line is encountered (i.e., *press enter twice to send
 the message*). An empty message ends the conversation.
 
+### Logging the conversation
+
+To log your CLI conversation to a text file, you can simply use the `tee` command,
+as done in this example:
+```bash
+cargo run --bin cesco-gpt -- correct | tee /tmp/gpt-log.txt
+```
+
 ## Customization
 
 If you want to modify the default available languages, just edit the
