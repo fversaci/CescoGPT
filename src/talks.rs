@@ -20,6 +20,7 @@ use strum_macros::{Display, EnumIter, EnumString};
 mod basic;
 mod correct;
 pub mod lang_practice;
+mod summarize;
 use clap::Subcommand;
 use lang_practice::{Lang, LangLevel};
 
@@ -49,6 +50,9 @@ pub enum Talk {
         #[arg(short, long)]
         native: bool,
     },
+    /// Summarize text to 10% of original length
+    #[strum(serialize = "Summarize Text")]
+    Summarize,
 }
 
 impl Talk {
@@ -59,6 +63,7 @@ impl Talk {
                 lang_practice::get_conv(client, lang, level).await
             }
             Talk::Correct { native } => correct::get_conv(client, native).await,
+            Talk::Summarize => summarize::get_conv(client).await,
         }
     }
 }

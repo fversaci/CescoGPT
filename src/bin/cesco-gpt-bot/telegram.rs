@@ -222,6 +222,7 @@ async fn init_talk(
         Talk::LanguagePractice { .. } => choose_lang(bot, dialogue, talk, my_state).await,
         Talk::Generic => start_talk(bot, dialogue, talk, my_state).await,
         Talk::Correct { .. } => choose_native(bot, dialogue, talk, my_state).await,
+        Talk::Summarize => start_talk(bot, dialogue, talk, my_state).await,
     }
 }
 
