@@ -13,18 +13,24 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 **************************************************************************/
+use crate::talks::lang_practice::{Lang, LangLevel};
 use crate::talks::TalkStart;
 use chatgpt::client::ChatGPT;
 use chatgpt::err::Error;
 
-pub async fn get_conv(client: &ChatGPT) -> Result<TalkStart, Error> {
-    let sys_msg = "You are CescoGPT, an AI designed to summarize texts. \
-    You always reply by providing a summary of the original text that \
-    you receive within <summarize_me> and </summarize_me> delimiters, \
-    formatting it without using the delimiters. Your summaries are written \
-    exclusively in the same language as the original text, and the length \
-    of the summary is approximately 10% of the length of the original text."
-        .to_string();
+pub async fn get_conv(
+    client: &ChatGPT,
+    lang: &Lang,
+    level: &LangLevel,
+) -> Result<TalkStart, Error> {
+    let sys_msg = format!(
+        "You are CescoGPT, an AI designed to summarize texts. \
+         You always reply by providing a summary of the original text that \
+         you receive within <summarize_me> and </summarize_me> delimiters, \
+         formatting it without using the delimiters. Your summaries are written \
+         exclusively in {level} level {lang}, and the length of the summary is \
+         approximately 10% of the length of the original text."
+    );
     let conv = client.new_conversation_directed(sys_msg);
     let presuff = (
         "<summarize_me>\n".to_string(),

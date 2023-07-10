@@ -52,7 +52,12 @@ pub enum Talk {
     },
     /// Summarize text to 10% of original length
     #[strum(serialize = "Summarize Text")]
-    Summarize,
+    Summarize {
+        #[arg(value_enum)]
+        lang: Lang,
+        #[arg(value_enum)]
+        level: LangLevel,
+    },
 }
 
 impl Talk {
@@ -63,7 +68,7 @@ impl Talk {
                 lang_practice::get_conv(client, lang, level).await
             }
             Talk::Correct { native } => correct::get_conv(client, native).await,
-            Talk::Summarize => summarize::get_conv(client).await,
+            Talk::Summarize { lang, level } => summarize::get_conv(client, lang, level).await,
         }
     }
 }

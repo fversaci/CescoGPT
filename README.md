@@ -7,7 +7,9 @@ This bot, written in Rust, allows users to access ChatGPT
 2. to practice conversation in a foreign language, via a [predefined
 prompt](src/talks/lang_practice.rs#L51);
 3. to correct and improve texts, via another [predefined
-prompt](src/talks/correct.rs#L21).
+prompt](src/talks/correct.rs#L21);
+4. to summarize texts, choosing the output language and its level, via
+a [predefined prompt](src/talks/summarize.rs#L26).
 
 ## Configuration
 
@@ -75,9 +77,10 @@ If you want to modify the default available languages, just edit the
 
 ## Known problems
 
-Sometimes messages to Telegram might get lost and only three dots are shown
-as a response. In that case just copy and paste your latest message and carry
-on with the conversation.
+Sometimes the OpenAI API may hang and then only three dots are shown
+as a response. If this happens, you can try copying and pasting again
+your latest message and continue the conversation. If that doesn't
+work, you can use the command `/restart` to restart the conversation.
 
 ## Author
 
