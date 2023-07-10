@@ -69,7 +69,7 @@ as done in this example:
 cargo run --bin cesco-gpt -- correct | tee /tmp/gpt-log.txt
 ```
 
-## Customization
+## Language customization
 
 If you want to modify the default available languages, just edit the
 `Lang` enum which is found in
@@ -77,10 +77,14 @@ If you want to modify the default available languages, just edit the
 
 ## Known problems
 
-Sometimes the OpenAI API may hang and then only three dots are shown
-as a response. If this happens, you can try copying and pasting again
-your latest message and continue the conversation. If that doesn't
-work, you can use the command `/restart` to restart the conversation.
+- Sometimes the OpenAI API may hang and then only three dots are shown
+  as a response. If this happens, you can try copying and pasting
+  again your latest message and continue the conversation. If that
+  doesn't work, you can use the command `/restart` to restart the
+  conversation.
+- Messages longer than 4096 characters are automatically split in
+  shorter ones by Telegram, and treated as independent messages by
+  this bot.
 
 ## Author
 
