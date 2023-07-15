@@ -484,6 +484,9 @@ async fn send_stream(
         }
     }
     // send/update final msg
+    if msg.is_empty() {
+        msg.push_str("-- ␃ --");  // end of text
+    }
     update_markdown(bot, chat_id, m_id, &msg).await?;
     let msgs = ChatMessage::from_response_chunks(output);
     Ok(msgs.first().cloned())
