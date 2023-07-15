@@ -14,7 +14,7 @@
   limitations under the License.
 **************************************************************************/
 use crate::{ChatConv, HashSet, MyState};
-use anyhow::Result;
+use anyhow::{Error, Result};
 use cesco_gpt::talks::lang_practice::{Lang, LangLevel};
 use cesco_gpt::talks::Talk;
 use chatgpt::prelude::*;
@@ -180,9 +180,22 @@ async fn bouncer(
     select_talk(bot, dialogue, my_state).await
 }
 
+async fn keyb_query(
+    bot: &Bot,
+    dialogue: &MyDialogue,
+    txt_msg: String,
+    keyb: InlineKeyboardMarkup,
+) -> Result<MessageId> {
+    let chat_id = dialogue.chat_id();
+    let sent = bot
+        .send_message(chat_id, txt_msg)
+        .reply_markup(keyb)
+        .await?;
+    Ok(sent.id)
+}
+
 async fn select_talk(bot: Bot, dialogue: MyDialogue, my_state: Arc<MyState>) -> HandlerResult {
     let talks_per_row = 2;
-    let chat_id = dialogue.chat_id();
     let talks: Vec<Talk> = Talk::iter().collect();
     let talks = talks.chunks(talks_per_row).map(|row| {
         row.iter()
@@ -190,16 +203,13 @@ async fn select_talk(bot: Bot, dialogue: MyDialogue, my_state: Arc<MyState>) -> 
             .map(|talk_cmd| InlineKeyboardButton::callback(talk_cmd.clone(), talk_cmd))
     });
     let txt_msg = "Choose the conversation:".to_string();
-    let sent = bot
-        .send_message(chat_id, txt_msg)
-        .reply_markup(InlineKeyboardMarkup::new(talks))
-        .await?;
-    let prev = Some(sent.id);
+    let keyb = InlineKeyboardMarkup::new(talks);
+    let prev = Some(keyb_query(&bot, &dialogue, txt_msg, keyb).await?);
     dialogue.update(State::InitTalk { my_state, prev }).await?;
     Ok(())
 }
 
-async fn clean_buttons(bot: Bot, chat_id: ChatId, m_id: Option<MessageId>) -> HandlerResult {
+async fn clean_buttons(bot: Bot, chat_id: ChatId, m_id: Option<MessageId>) -> Result<()> {
     // clean old buttons?
     if let Some(m_id) = m_id {
         bot.delete_message(chat_id, m_id).await?;
@@ -219,10 +229,11 @@ async fn init_talk(
     let talk = q.data.unwrap_or_default();
     let talk = Talk::from_str(&talk).unwrap_or_default();
     match talk {
-        Talk::LanguagePractice { .. } => choose_lang(bot, dialogue, talk, my_state).await,
         Talk::Generic => start_talk(bot, dialogue, talk, my_state).await,
         Talk::Correct { .. } => choose_native(bot, dialogue, talk, my_state).await,
-        Talk::Summarize { .. } => choose_lang(bot, dialogue, talk, my_state).await,
+        Talk::LanguagePractice { .. } | Talk::Summarize { .. } => {
+            choose_lang(bot, dialogue, talk, my_state).await
+        }
     }
 }
 
@@ -232,17 +243,13 @@ async fn choose_native(
     talk: Talk,
     my_state: Arc<MyState>,
 ) -> HandlerResult {
-    let chat_id = dialogue.chat_id();
     let yes_no = vec![vec![
         InlineKeyboardButton::callback("Yes", "true"),
         InlineKeyboardButton::callback("No", "false"),
     ]];
     let txt_msg = "Rephrase as a native speaker?".to_string();
-    let sent = bot
-        .send_message(chat_id, txt_msg)
-        .reply_markup(InlineKeyboardMarkup::new(yes_no))
-        .await?;
-    let prev = Some(sent.id);
+    let keyb = InlineKeyboardMarkup::new(yes_no);
+    let prev = Some(keyb_query(&bot, &dialogue, txt_msg, keyb).await?);
     dialogue
         .update(State::SetNative {
             my_state,
@@ -277,7 +284,6 @@ async fn choose_lang(
     my_state: Arc<MyState>,
 ) -> HandlerResult {
     let langs_per_row = 3;
-    let chat_id = dialogue.chat_id();
     let langs: Vec<Lang> = Lang::iter().collect();
     let langs = langs.chunks(langs_per_row).map(|row| {
         row.iter()
@@ -285,11 +291,8 @@ async fn choose_lang(
             .map(|lang_cmd| InlineKeyboardButton::callback(lang_cmd.clone(), lang_cmd))
     });
     let txt_msg = "Choose the language:".to_string();
-    let sent = bot
-        .send_message(chat_id, txt_msg)
-        .reply_markup(InlineKeyboardMarkup::new(langs))
-        .await?;
-    let prev = Some(sent.id);
+    let keyb = InlineKeyboardMarkup::new(langs);
+    let prev = Some(keyb_query(&bot, &dialogue, txt_msg, keyb).await?);
     dialogue
         .update(State::ChooseLevel {
             my_state,
@@ -317,7 +320,6 @@ async fn choose_level(
         _ => (),
     }
     let levs_per_row = 2;
-    let chat_id = dialogue.chat_id();
     let levs: Vec<LangLevel> = LangLevel::iter().collect();
     let levs = levs.chunks(levs_per_row).map(|row| {
         row.iter()
@@ -325,11 +327,8 @@ async fn choose_level(
             .map(|lev_cmd| InlineKeyboardButton::callback(lev_cmd.clone(), lev_cmd))
     });
     let txt_msg = "Choose your level:".to_string();
-    let sent = bot
-        .send_message(chat_id, txt_msg)
-        .reply_markup(InlineKeyboardMarkup::new(levs))
-        .await?;
-    let prev = Some(sent.id);
+    let keyb = InlineKeyboardMarkup::new(levs);
+    let prev = Some(keyb_query(&bot, &dialogue, txt_msg, keyb).await?);
     dialogue
         .update(State::SetLevel {
             my_state,
@@ -397,11 +396,11 @@ async fn do_talk(
     let chat_id = msg.chat.id;
     let (pre, suff) = chat_conv.presuff.clone();
     let mut msg_out = pre;
-    msg_out.push_str(msg.text().unwrap());
+    msg_out.push_str(msg.text().ok_or(Error::msg("## Error in message! ##"))?);
     msg_out.push_str(&suff);
-    let mut conv = chat_conv.conv.unwrap();
+    let mut conv = chat_conv.conv.ok_or(Error::msg("## No conversation! ##"))?;
     let stream = conv.send_message_streaming(msg_out).await?;
-    let resp = send_stream(bot, chat_id, stream).await;
+    let resp = send_stream(bot, chat_id, stream).await?;
     // save reply in chat history
     if let Some(resp) = resp {
         conv.history.push(resp);
@@ -420,28 +419,28 @@ async fn do_talk(
     Ok(())
 }
 
-async fn send_markdown(bot: Bot, chat_id: ChatId, msg: &str) -> HandlerResult {
+async fn send_markdown(bot: Bot, chat_id: ChatId, msg: &str) -> Result<()> {
     let md = payloads::SendMessage::new(chat_id, msg);
     type Sender = JsonRequest<payloads::SendMessage>;
     let sent = Sender::new(bot.clone(), md.clone().parse_mode(ParseMode::Markdown)).await;
     // If markdown cannot be parsed, send it as raw text
-    if sent.is_err() {
-        Sender::new(bot.clone(), md.clone()).await?;
-        log::debug!("Cannot parse markdown: {}", sent.err().unwrap());
-    };
+    if let Err(e) = sent {
+        Sender::new(bot, md).await?;
+        log::debug!("Cannot parse markdown: {}", e);
+    }
 
     Ok(())
 }
 
-async fn update_markdown(bot: Bot, chat_id: ChatId, m_id: MessageId, msg: &str) -> HandlerResult {
+async fn update_markdown(bot: Bot, chat_id: ChatId, m_id: MessageId, msg: &str) -> Result<()> {
     let md = payloads::EditMessageText::new(chat_id, m_id, msg);
     type Sender = JsonRequest<payloads::EditMessageText>;
     let sent = Sender::new(bot.clone(), md.clone().parse_mode(ParseMode::Markdown)).await;
     // If markdown cannot be parsed, send it as raw text
-    if sent.is_err() {
-        Sender::new(bot.clone(), md.clone()).await?;
-        log::debug!("Cannot parse markdown: {}", sent.err().unwrap());
-    };
+    if let Err(e) = sent {
+        Sender::new(bot, md).await?;
+        log::debug!("Cannot parse markdown: {}", e);
+    }
 
     Ok(())
 }
@@ -450,9 +449,9 @@ async fn send_stream(
     bot: Bot,
     chat_id: ChatId,
     mut stream: impl Stream<Item = ResponseChunk> + std::marker::Unpin,
-) -> Option<ChatMessage> {
+) -> Result<Option<ChatMessage>> {
     // send message zero
-    let zero = bot.send_message(chat_id, "...").await.ok()?;
+    let zero = bot.send_message(chat_id, "...").await?;
     let m_id = zero.id;
     // send updates
     let mut output: Vec<ResponseChunk> = Vec::new();
@@ -475,9 +474,7 @@ async fn send_stream(
                 // send/update msg every block token
                 let now = Utc::now();
                 if now - oldtime > mintime {
-                    update_markdown(bot.clone(), chat_id, m_id, &msg)
-                        .await
-                        .ok()?;
+                    update_markdown(bot.clone(), chat_id, m_id, &msg).await?;
                     oldtime = now;
                 }
                 // restore message without trailing dots
@@ -487,13 +484,7 @@ async fn send_stream(
         }
     }
     // send/update final msg
-    update_markdown(bot.clone(), chat_id, m_id, &msg)
-        .await
-        .ok()?;
+    update_markdown(bot, chat_id, m_id, &msg).await?;
     let msgs = ChatMessage::from_response_chunks(output);
-    if msgs.is_empty() {
-        None
-    } else {
-        Some(msgs[0].to_owned())
-    }
+    Ok(msgs.first().cloned())
 }
