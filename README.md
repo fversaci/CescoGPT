@@ -46,6 +46,8 @@ Assuming you have cargo correctly set up, just run:
 TELOXIDE_TOKEN=123_YOUR_TELEGRAM_BOT_TOKEN_567 \
 cargo run --bin cesco-gpt-bot
 ```
+To enable logging of debug information, also set the `RUST_LOG=debug`
+environment variable.
 
 ## Running the CLI
 
@@ -55,6 +57,7 @@ from the shell. Just run with:
 cargo run --bin cesco-gpt -- generic  # generic ChatGPT prompt
 cargo run --bin cesco-gpt -- language-practice german b2  # practice B2 German
 cargo run --bin cesco-gpt -- correct --native  # correct and rephrase as a native speaker
+cargo run --bin cesco-gpt -- summarize italian c2  # summarize a text into C2 Italian
 cargo run --bin cesco-gpt -- -h  # get detailed help
 ```
 The CLI concatenates consecutive lines and sends them as a message
@@ -77,14 +80,17 @@ If you want to modify the default available languages, just edit the
 
 ## Known problems
 
-- Sometimes the OpenAI API may hang and then only three dots are shown
-  as a response. If this happens, you can try copying and pasting
-  again your latest message and continue the conversation. If that
-  doesn't work, you can use the command `/restart` to restart the
-  conversation.
+- Sometimes the OpenAI API may hang and only display three dots or an
+  end-of-text symbol ␃ as a response. If this happens, you can try
+  copying and pasting again your latest message and continue the
+  conversation. If that doesn't work, you can use the command
+  `/restart` to restart the conversation.
 - Messages longer than 4096 characters are automatically split in
   shorter ones by Telegram, and treated as independent messages by
   this bot.
+- Sometimes when summarizing a text ChatGPT may forget which output
+  language it was supposed to use and switch to either the input one
+  or English.
 
 ## Author
 
