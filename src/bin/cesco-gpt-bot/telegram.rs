@@ -169,6 +169,7 @@ async fn bouncer(
     if !allowed(&chat_id, wl) {
         bot.send_message(chat_id, "Sorry dude, you're not in the whitelist.")
             .await?;
+        log::info!("Unknown user: {}", &chat_id);
         return Ok(());
     }
     // set initial state
@@ -365,6 +366,7 @@ async fn start_talk(
     my_state: Arc<MyState>,
 ) -> HandlerResult {
     let chat_id = dialogue.chat_id();
+    log::info!("User: {} Talk: {:?}", &chat_id, &talk);
     let chat_client = my_state.chat_client.clone();
     let ts = talk.get_conv(&chat_client).await?;
     let conv = Some(ts.conv);
