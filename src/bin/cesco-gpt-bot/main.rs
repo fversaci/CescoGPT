@@ -69,7 +69,7 @@ fn get_conf() -> MyBotConfig {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    pretty_env_logger::init();
+    pretty_env_logger::init_timed();
     log::info!("Starting bot...");
     let bot = Bot::from_env();
     let my_conf = get_conf();
