@@ -16,11 +16,10 @@
 use cesco_gpt::talks::Talk;
 use chatgpt::prelude::*;
 use clap::Parser;
-use futures_util::Stream;
-use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::{stdout, Write};
+use tokio_stream::{Stream, StreamExt};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -119,8 +118,9 @@ async fn main() -> Result<()> {
         let msg = print_stream(stream).await;
         if let Some(msg) = msg {
             conv.history.push(msg);
+        } else {
+            println!("-- ␃ --\n");
         }
     }
-
     Ok(())
 }

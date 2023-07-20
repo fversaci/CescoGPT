@@ -20,8 +20,6 @@ use cesco_gpt::talks::Talk;
 use chatgpt::prelude::*;
 use chrono::prelude::*;
 use chrono::Duration;
-use futures_util::Stream;
-use futures_util::StreamExt;
 use std::str::FromStr;
 use std::sync::Arc;
 use strum::IntoEnumIterator;
@@ -33,6 +31,7 @@ use teloxide::{
     types::{InlineKeyboardButton, InlineKeyboardMarkup, MessageId, ParseMode},
     utils::command::BotCommands,
 };
+use tokio_stream::{Stream, StreamExt};
 
 type MyDialogue = Dialogue<State, InMemStorage<State>>;
 type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
@@ -487,7 +486,7 @@ async fn send_stream(
     }
     // send/update final msg
     if msg.is_empty() {
-        msg.push_str("-- ␃ --");  // end of text
+        msg.push_str("-- ␃ --"); // end of text
     }
     update_markdown(bot, chat_id, m_id, &msg).await?;
     let msgs = ChatMessage::from_response_chunks(output);

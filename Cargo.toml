@@ -19,4 +19,5 @@ strum = "0.25.0"
 strum_macros = "0.25.1"
 teloxide = { version = "0.12.2", features = ["macros", "auto-send"] }
 tokio = { version = "1.29.1", features = ["full"] }
+tokio-stream = "0.1.14"
 toml = "0.7.6"

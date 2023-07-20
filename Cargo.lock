@@ -183,6 +183,7 @@ dependencies = [
  "strum_macros",
  "teloxide",
  "tokio",
+ "tokio-stream",
  "toml",
 ]
 
