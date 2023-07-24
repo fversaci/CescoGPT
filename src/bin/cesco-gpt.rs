@@ -87,7 +87,7 @@ async fn print_stream(
     }
     println!("\n");
     let msgs = ChatMessage::from_response_chunks(output);
-    msgs.first().map(|msg| msg.clone())
+    msgs.first().cloned()
 }
 
 #[tokio::main]
@@ -96,9 +96,10 @@ async fn main() -> Result<()> {
     let my_conf = get_conf();
     log::debug!("{my_conf:?}");
     let key = &my_conf.openai_api_key;
-    let gpt_ver = ChatGPTEngine::Custom("gpt-3.5-turbo-0613");
+    let gpt_ver = "gpt-3.5-turbo-0613";
+    let gpt_eng = ChatGPTEngine::Custom(gpt_ver);
     let gpt_conf = ModelConfigurationBuilder::default()
-        .engine(gpt_ver)
+        .engine(gpt_eng)
         .build()
         .unwrap();
     let client = ChatGPT::new_with_config(key, gpt_conf)?;
@@ -110,12 +111,25 @@ async fn main() -> Result<()> {
         println!("{}\n", msg);
     }
     while let Some(msg) = read_msg(&presuff) {
-        let stream = conv.send_message_streaming(msg).await?;
-        let msg = print_stream(stream).await;
-        if let Some(msg) = msg {
-            conv.history.push(msg);
-        } else {
-            println!("-- ␃ --\n");
+        /////// for debugging: no streaming version
+        // let response = conv.send_message(msg).await?;
+        // println!("\n{}\n", response.message().content);
+        ///////
+
+        let stream = conv.send_message_streaming(msg).await;
+        match stream {
+            Ok(stream) => {
+                let msg = print_stream(stream).await;
+                if let Some(msg) = msg {
+                    conv.history.push(msg);
+                } else {
+                    println!("-- ␃ --\n");
+                }
+            }
+            Err(_) => {
+                println!("-- Max tokens exceeded, rolling back. --\n");
+                conv.rollback();
+            }
         }
     }
     Ok(())

@@ -400,11 +400,22 @@ async fn do_talk(
     msg_out.push_str(msg.text().ok_or(Error::msg("## Error in message! ##"))?);
     msg_out.push_str(&suff);
     let mut conv = chat_conv.conv.ok_or(Error::msg("## No conversation! ##"))?;
-    let stream = conv.send_message_streaming(msg_out).await?;
-    let resp = send_stream(bot, chat_id, stream).await?;
-    // save reply in chat history
-    if let Some(resp) = resp {
-        conv.history.push(resp);
+    let stream = conv.send_message_streaming(msg_out).await;
+    match stream {
+        Ok(stream) => {
+            let resp = send_stream(bot, chat_id, stream).await?;
+            // save reply in chat history
+            if let Some(resp) = resp {
+                conv.history.push(resp);
+            }
+        }
+        Err(_) => {
+            bot.send_message(
+                chat_id,
+                "-- Max tokens exceeded, please re-/start the conversation. --",
+            )
+            .await?;
+        }
     }
     let chat_conv = ChatConv {
         conv: Some(conv),
