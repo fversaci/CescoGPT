@@ -44,10 +44,10 @@ fn get_conf() -> MyCLIConfig {
 }
 
 fn read_msg(presuff: &(String, String)) -> Option<String> {
-    let mut rl = rustyline::DefaultEditor::new().ok()?;
     let (pre, suff) = presuff; // initial and final delimiters
     let mut msg = pre.clone();
     let zero_sz = msg.len();
+    let mut rl = rustyline::DefaultEditor::new().ok()?;
     while let Ok(line) = rl.readline("") {
         if line.is_empty() {
             break;
@@ -87,11 +87,7 @@ async fn print_stream(
     }
     println!("\n");
     let msgs = ChatMessage::from_response_chunks(output);
-    if msgs.is_empty() {
-        None
-    } else {
-        Some(msgs[0].to_owned())
-    }
+    msgs.first().map(|msg| msg.clone())
 }
 
 #[tokio::main]
