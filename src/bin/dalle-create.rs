@@ -16,7 +16,7 @@
 
 use anyhow::Result;
 use async_openai::types::{
-    CreateImageRequestArgs, ImageModel, ImageQuality, ImageSize, ImageStyle, ResponseFormat,
+    CreateImageRequestArgs, ImageModel, ImageQuality, ImageSize, ResponseFormat,
 };
 use async_openai::{config::OpenAIConfig, Client};
 use clap::Parser;
@@ -30,6 +30,9 @@ use std::path::PathBuf;
 struct Args {
     /// Text file containing the prompt (max 1000 chars)
     prompt_file: PathBuf,
+    /// Enable high details image generation
+    #[arg(long)]
+    hd: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -60,13 +63,18 @@ async fn main() -> Result<()> {
     let mut file_reader = BufReader::new(prompt_f);
     file_reader.read_to_string(&mut prompt)?;
     // create image
+    let quality = if args.hd {
+        ImageQuality::HD
+    } else {
+        ImageQuality::Standard
+    };
     let request = CreateImageRequestArgs::default()
         .prompt(prompt)
         .model(ImageModel::DallE3)
         .n(1)
         .response_format(ResponseFormat::B64Json)
         .size(ImageSize::S1024x1024)
-        .quality(ImageQuality::Standard)
+        .quality(quality)
         .build()?;
 
     let response = client.images().create(request).await?;
