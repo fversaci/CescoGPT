@@ -13,14 +13,20 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 **************************************************************************/
-use crate::talks::TalkStart;
-use chatgpt::client::ChatGPT;
-use chatgpt::err::Error;
 
-pub async fn get_conv(client: &ChatGPT) -> Result<TalkStart, Error> {
-    let conv = client.new_conversation();
+use crate::talks::{get_asst_thread, TalkStart};
+use anyhow::{Error, Result};
+use async_openai::{config::OpenAIConfig, Client};
+
+pub async fn get_conv(client: &Client<OpenAIConfig>, name: &str) -> Result<TalkStart, Error> {
+    let (asst, thread) = get_asst_thread(client, name, None).await?;
     let msg = Some("Ask away, my friend.".to_string());
     let presuff = ("".to_string(), "".to_string());
-    let ts = TalkStart { conv, msg, presuff };
+    let ts = TalkStart {
+        thread,
+        asst,
+        msg,
+        presuff,
+    };
     Ok(ts)
 }

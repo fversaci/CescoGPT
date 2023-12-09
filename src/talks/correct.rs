@@ -13,22 +13,28 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 **************************************************************************/
-use crate::talks::TalkStart;
-use chatgpt::client::ChatGPT;
-use chatgpt::err::Error;
+use crate::talks::{get_asst_thread, TalkStart};
+use anyhow::{Error, Result};
+use async_openai::{config::OpenAIConfig, Client};
 
-pub async fn get_conv(client: &ChatGPT, native: &bool) -> Result<TalkStart, Error> {
-    let mut sys_msg = "You are CescoGPT, an AI to correct and improve texts. \
-    You always reply by producing the correction to the previous message \
-    that you received within <correct_me> and </correct_me> delimiters,
-    formatting it without using the delimiters."
-        .to_string();
-    if *native {
-        sys_msg += "Rephrase the text as a fluent native speaker.";
-    }
-    let conv = client.new_conversation_directed(sys_msg);
+pub async fn get_conv(
+    client: &Client<OpenAIConfig>,
+    name: &str,
+    native: &bool,
+) -> Result<TalkStart, Error> {
+    let refine = if *native {
+        Some("Rephrase the text as a fluent native speaker.")
+    } else {
+        None
+    };
+    let (asst, thread) = get_asst_thread(client, name, refine).await?;
     let presuff = ("<correct_me>\n".to_string(), "\n</correct_me>".to_string());
     let msg = Some("Paste the text and I'll correct it.".to_string());
-    let ts = TalkStart { conv, msg, presuff };
+    let ts = TalkStart {
+        thread,
+        asst,
+        msg,
+        presuff,
+    };
     Ok(ts)
 }

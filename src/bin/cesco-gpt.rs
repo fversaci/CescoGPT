@@ -13,8 +13,13 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 **************************************************************************/
-use cesco_gpt::talks::Talk;
-use chatgpt::prelude::*;
+
+use anyhow::Result;
+use async_openai::types::{
+    ChatCompletionResponseStream, CreateMessageRequestArgs, CreateRunRequestArgs,
+};
+use async_openai::{config::OpenAIConfig, Client};
+use cesco_gpt::talks::{get_response, Talk};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -65,29 +70,25 @@ fn read_msg(presuff: &(String, String)) -> Option<String> {
     }
 }
 
-async fn print_stream(
-    mut stream: impl Stream<Item = ResponseChunk> + std::marker::Unpin,
-) -> Option<ChatMessage> {
-    let mut output: Vec<ResponseChunk> = Vec::new();
-    while let Some(chunk) = stream.next().await {
-        match chunk {
-            ResponseChunk::Content {
-                delta,
-                response_index,
-            } => {
-                print!("{delta}");
-                stdout().lock().flush().unwrap();
-                output.push(ResponseChunk::Content {
-                    delta,
-                    response_index,
+async fn print_stream(mut stream: ChatCompletionResponseStream) -> Result<()> {
+    let mut lock = stdout().lock();
+    while let Some(result) = stream.next().await {
+        match result {
+            Ok(response) => {
+                response.choices.iter().for_each(|chat_choice| {
+                    if let Some(ref content) = chat_choice.delta.content {
+                        write!(lock, "{}", content).unwrap();
+                    }
                 });
             }
-            other => output.push(other),
+            Err(err) => {
+                writeln!(lock, "error: {err}").unwrap();
+            }
         }
+        lock.flush()?;
     }
-    println!("\n");
-    let msgs = ChatMessage::from_response_chunks(output);
-    msgs.first().cloned()
+    writeln!(lock).unwrap();
+    Ok(())
 }
 
 #[tokio::main]
@@ -96,41 +97,40 @@ async fn main() -> Result<()> {
     let my_conf = get_conf();
     log::debug!("{my_conf:?}");
     let key = &my_conf.openai_api_key;
-    let gpt_ver = "gpt-3.5-turbo-0613";
-    let gpt_eng = ChatGPTEngine::Custom(gpt_ver);
-    let gpt_conf = ModelConfigurationBuilder::default()
-        .engine(gpt_eng)
-        .build()
-        .unwrap();
-    let client = ChatGPT::new_with_config(key, gpt_conf)?;
+
+    let config = OpenAIConfig::new().with_api_key(key);
+    let client = Client::with_config(config);
+
     let talk = args.talk;
     let ts = talk.get_conv(&client).await?;
-    let mut conv = ts.conv;
+    let thread = ts.thread;
+    let asst = ts.asst;
     let presuff = ts.presuff;
     if let Some(msg) = ts.msg {
         println!("{}\n", msg);
     }
-    while let Some(msg) = read_msg(&presuff) {
-        /////// for debugging: no streaming version
-        // let response = conv.send_message(msg).await?;
-        // println!("\n{}\n", response.message().content);
-        ///////
+    let run_request = CreateRunRequestArgs::default()
+        .assistant_id(&asst.id)
+        .build()?;
 
-        let stream = conv.send_message_streaming(msg).await;
-        match stream {
-            Ok(stream) => {
-                let msg = print_stream(stream).await;
-                if let Some(msg) = msg {
-                    conv.history.push(msg);
-                } else {
-                    println!("-- ␃ --\n");
-                }
-            }
-            Err(_) => {
-                println!("-- Max tokens exceeded, rolling back. --\n");
-                conv.rollback();
-            }
-        }
+    while let Some(msg) = read_msg(&presuff) {
+        let message = CreateMessageRequestArgs::default()
+            .role("user")
+            .content(msg)
+            .build()?;
+        let _message_obj = client
+            .threads()
+            .messages(&thread.id)
+            .create(message)
+            .await?;
+        let run = client
+            .threads()
+            .runs(&thread.id)
+            .create(run_request.clone())
+            .await?;
+        let resp = get_response(&client, &run, &thread.id).await?;
+        println!("{resp}\n");
     }
+
     Ok(())
 }

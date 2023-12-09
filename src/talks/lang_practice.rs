@@ -13,11 +13,14 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 **************************************************************************/
-use crate::talks::TalkStart;
-use chatgpt::client::ChatGPT;
-use chatgpt::err::Error;
+use crate::talks::{get_asst_thread, TalkStart};
+use anyhow::{Error, Result};
+use async_openai::types::CreateRunRequestArgs;
+use async_openai::{config::OpenAIConfig, Client};
 use clap::ValueEnum;
 use strum_macros::{Display, EnumIter, EnumString};
+
+use super::get_response;
 
 #[derive(Default, Display, Debug, Clone, EnumIter, EnumString, ValueEnum)]
 pub enum Lang {
@@ -44,26 +47,27 @@ pub enum LangLevel {
 }
 
 pub async fn get_conv(
-    client: &ChatGPT,
+    client: &Client<OpenAIConfig>,
+    name: &str,
     lang: &Lang,
     level: &LangLevel,
 ) -> Result<TalkStart, Error> {
-    let sys_msg = "You are CescoGPT, an AI to practice conversation in \
-    foreign languages. You always reply in the current foreign language, by \
-    1. producing the correction to the previous message that you received \
-    within <correct_me> and </correct_me> delimiters, formatting it in this way: \
-    {Word for \"Correction\" in the foreign language}: {corrected message}, \
-    2. replying to the message and 3. you always end your \
-    response with a related question.";
-    let msg = format!("We'll talk in {level} level {lang}. I'll start the conversation.");
-
-    let mut conv = client.new_conversation_directed(sys_msg);
-    let response = conv.send_message(msg).await?;
-    let msg = &response.message().content;
+    let refine = format!("We'll talk in {level} level {lang}. I'll start the conversation.");
+    let (asst, thread) = get_asst_thread(client, name, Some(&refine)).await?;
+    let run_request = CreateRunRequestArgs::default()
+        .assistant_id(&asst.id)
+        .build()?;
+    let run = client
+        .threads()
+        .runs(&thread.id)
+        .create(run_request.clone())
+        .await?;
+    let resp = get_response(client, &run, &thread.id).await?;
     let presuff = ("<correct_me>\n".to_string(), "\n</correct_me>".to_string());
     let ts = TalkStart {
-        conv,
-        msg: Some(msg.to_string()),
+        thread,
+        asst,
+        msg: Some(resp),
         presuff,
     };
     Ok(ts)

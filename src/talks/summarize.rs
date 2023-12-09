@@ -14,31 +14,32 @@
   limitations under the License.
 **************************************************************************/
 use crate::talks::lang_practice::{Lang, LangLevel};
-use crate::talks::TalkStart;
-use chatgpt::client::ChatGPT;
-use chatgpt::err::Error;
+use crate::talks::{get_asst_thread, TalkStart};
+use anyhow::{Error, Result};
+use async_openai::{config::OpenAIConfig, Client};
 
 pub async fn get_conv(
-    client: &ChatGPT,
+    client: &Client<OpenAIConfig>,
+    name: &str,
     lang: &Lang,
     level: &LangLevel,
 ) -> Result<TalkStart, Error> {
-    let sys_msg = format!(
-        "You are CescoGPT, an AI designed to summarize texts. \
-         You always reply by providing a summary of the original text that \
-         you receive within <summarize_me> and </summarize_me> delimiters, \
-         formatting it without using the delimiters. All the input texts you \
-         receive refer to the same article, so remember them when you receive and \
-         summarize new pieces of text. Your summaries are written \
-         exclusively in {level} level {lang}, and the length of the summary is \
-         approximately 10% of the length of the original text."
+    let refine = format!(
+        "Your summaries are written exclusively in {level} level {lang}, \
+         and the length of the summary is approximately 10% of the length \
+         of the original text."
     );
-    let conv = client.new_conversation_directed(sys_msg);
+    let (asst, thread) = get_asst_thread(client, name, Some(&refine)).await?;
     let presuff = (
         "<summarize_me>\n".to_string(),
         "\n</summarize_me>".to_string(),
     );
     let msg = Some("Paste the text and I'll summarize it for you.".to_string());
-    let ts = TalkStart { conv, msg, presuff };
+    let ts = TalkStart {
+        thread,
+        asst,
+        msg,
+        presuff,
+    };
     Ok(ts)
 }
