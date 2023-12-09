@@ -23,7 +23,6 @@ use cesco_gpt::talks::{get_response, Talk};
 use chrono::prelude::*;
 use chrono::Duration;
 use std::str::FromStr;
-use std::sync::Arc;
 use strum::IntoEnumIterator;
 use teloxide::{
     dispatching::{dialogue, dialogue::InMemStorage, UpdateHandler},
@@ -43,24 +42,24 @@ pub enum State {
     #[default]
     Bouncer,
     Start {
-        my_state: Arc<MyState>,
+        my_state: MyState,
     },
     InitTalk {
-        my_state: Arc<MyState>,
+        my_state: MyState,
         prev: Option<MessageId>,
     },
     ChooseLevel {
-        my_state: Arc<MyState>,
+        my_state: MyState,
         prev: Option<MessageId>,
         talk: Talk,
     },
     SetLevel {
-        my_state: Arc<MyState>,
+        my_state: MyState,
         prev: Option<MessageId>,
         talk: Talk,
     },
     SetNative {
-        my_state: Arc<MyState>,
+        my_state: MyState,
         prev: Option<MessageId>,
         talk: Talk,
     },
@@ -82,7 +81,7 @@ enum Command {
 }
 
 pub fn schema(
-    my_state: Arc<MyState>,
+    my_state: MyState,
 ) -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>> {
     use dptree::case;
 
@@ -159,7 +158,7 @@ async fn bouncer(
     bot: Bot,
     dialogue: MyDialogue,
     msg: Message,
-    my_state: Arc<MyState>,
+    my_state: MyState,
 ) -> HandlerResult {
     bot.set_my_commands(Command::bot_commands()).await?;
     // whitelist check
@@ -194,7 +193,7 @@ async fn keyb_query(
     Ok(sent.id)
 }
 
-async fn select_talk(bot: Bot, dialogue: MyDialogue, my_state: Arc<MyState>) -> HandlerResult {
+async fn select_talk(bot: Bot, dialogue: MyDialogue, my_state: MyState) -> HandlerResult {
     let talks_per_row = 2;
     let talks: Vec<Talk> = Talk::iter().collect();
     let talks = talks.chunks(talks_per_row).map(|row| {
@@ -221,7 +220,7 @@ async fn init_talk(
     bot: Bot,
     dialogue: MyDialogue,
     q: CallbackQuery,
-    tup_state: (Arc<MyState>, Option<MessageId>),
+    tup_state: (MyState, Option<MessageId>),
 ) -> HandlerResult {
     let (my_state, prev) = tup_state;
     let chat_id = dialogue.chat_id();
@@ -241,7 +240,7 @@ async fn choose_native(
     bot: Bot,
     dialogue: MyDialogue,
     talk: Talk,
-    my_state: Arc<MyState>,
+    my_state: MyState,
 ) -> HandlerResult {
     let yes_no = vec![vec![
         InlineKeyboardButton::callback("Yes", "true"),
@@ -264,7 +263,7 @@ async fn set_native(
     bot: Bot,
     dialogue: MyDialogue,
     q: CallbackQuery,
-    tup_state: (Arc<MyState>, Option<MessageId>, Talk),
+    tup_state: (MyState, Option<MessageId>, Talk),
 ) -> HandlerResult {
     let (my_state, prev, mut talk) = tup_state;
     let chat_id = dialogue.chat_id();
@@ -281,7 +280,7 @@ async fn choose_lang(
     bot: Bot,
     dialogue: MyDialogue,
     talk: Talk,
-    my_state: Arc<MyState>,
+    my_state: MyState,
 ) -> HandlerResult {
     let langs_per_row = 3;
     let langs: Vec<Lang> = Lang::iter().collect();
@@ -307,7 +306,7 @@ async fn choose_level(
     bot: Bot,
     dialogue: MyDialogue,
     q: CallbackQuery,
-    tup_state: (Arc<MyState>, Option<MessageId>, Talk),
+    tup_state: (MyState, Option<MessageId>, Talk),
 ) -> HandlerResult {
     let (my_state, prev, mut talk) = tup_state;
     let chat_id = dialogue.chat_id();
@@ -343,7 +342,7 @@ async fn set_level(
     bot: Bot,
     dialogue: MyDialogue,
     q: CallbackQuery,
-    tup_state: (Arc<MyState>, Option<MessageId>, Talk),
+    tup_state: (MyState, Option<MessageId>, Talk),
 ) -> HandlerResult {
     let (my_state, prev, mut talk) = tup_state;
     let chat_id = dialogue.chat_id();
@@ -362,7 +361,7 @@ async fn start_talk(
     bot: Bot,
     dialogue: MyDialogue,
     talk: Talk,
-    my_state: Arc<MyState>,
+    my_state: MyState,
 ) -> HandlerResult {
     let chat_id = dialogue.chat_id();
     log::info!("User: {} Talk: {:?}", &chat_id, &talk);

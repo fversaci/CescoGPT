@@ -18,7 +18,6 @@ use async_openai::{config::OpenAIConfig, types::CreateRunRequest, Client};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
-use std::sync::Arc;
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
 
 mod telegram;
@@ -62,10 +61,10 @@ async fn main() -> Result<()> {
     let key = &my_conf.openai_api_key;
     let config = OpenAIConfig::new().with_api_key(key);
     let chat_client = Client::with_config(config);
-    let my_state = Arc::new(MyState {
+    let my_state = MyState {
         my_conf,
         chat_client,
-    });
+    };
     Dispatcher::builder(bot, telegram::schema(my_state))
         .dependencies(dptree::deps![InMemStorage::<telegram::State>::new()])
         .enable_ctrlc_handler()
