@@ -14,7 +14,7 @@
   limitations under the License.
 **************************************************************************/
 use anyhow::Result;
-use chatgpt::prelude::*;
+use async_openai::{config::OpenAIConfig, types::CreateRunRequest, Client};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
@@ -29,33 +29,18 @@ pub struct MyBotConfig {
     openai_api_key: String,
 }
 
+#[derive(Clone)]
 pub struct ChatConv {
-    chat_client: ChatGPT,
-    conv: Option<Conversation>,
+    chat_client: Client<OpenAIConfig>,
+    thread_id: String,
+    run_request: CreateRunRequest,
     presuff: (String, String),
-}
-
-impl Clone for ChatConv {
-    fn clone(&self) -> Self {
-        match &self.conv {
-            Some(conv) => {
-                let conv =
-                    Conversation::new_with_history(self.chat_client.clone(), conv.history.clone());
-                ChatConv {
-                    chat_client: self.chat_client.clone(),
-                    conv: Some(conv),
-                    presuff: self.presuff.clone(),
-                }
-            }
-            None => self.clone(),
-        }
-    }
 }
 
 #[derive(Clone)]
 pub struct MyState {
     my_conf: MyBotConfig,
-    chat_client: ChatGPT,
+    chat_client: Client<OpenAIConfig>,
 }
 
 fn get_conf() -> MyBotConfig {
@@ -75,12 +60,8 @@ async fn main() -> Result<()> {
     let my_conf = get_conf();
     log::debug!("{my_conf:?}");
     let key = &my_conf.openai_api_key;
-    let gpt_ver = ChatGPTEngine::Custom("gpt-3.5-turbo-0613");
-    let gpt_conf = ModelConfigurationBuilder::default()
-        .engine(gpt_ver)
-        .build()
-        .unwrap();
-    let chat_client = ChatGPT::new_with_config(key, gpt_conf)?;
+    let config = OpenAIConfig::new().with_api_key(key);
+    let chat_client = Client::with_config(config);
     let my_state = Arc::new(MyState {
         my_conf,
         chat_client,

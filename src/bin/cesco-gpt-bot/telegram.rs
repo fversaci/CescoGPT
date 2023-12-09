@@ -15,9 +15,11 @@
 **************************************************************************/
 use crate::{ChatConv, HashSet, MyState};
 use anyhow::{Error, Result};
+use async_openai::Client;
+use async_openai::config::OpenAIConfig;
+use async_openai::types::{CreateMessageRequestArgs, CreateRunRequestArgs};
 use cesco_gpt::talks::lang_practice::{Lang, LangLevel};
-use cesco_gpt::talks::Talk;
-use chatgpt::prelude::*;
+use cesco_gpt::talks::{get_response, Talk};
 use chrono::prelude::*;
 use chrono::Duration;
 use std::str::FromStr;
@@ -63,7 +65,6 @@ pub enum State {
         talk: Talk,
     },
     DoTalk {
-        my_state: Arc<MyState>,
         chat_conv: ChatConv,
     },
 }
@@ -97,7 +98,6 @@ pub fn schema(
         .branch(command_handler)
         .branch(
             case![State::DoTalk {
-                my_state,
                 chat_conv
             }]
             .endpoint(do_talk),
@@ -368,19 +368,23 @@ async fn start_talk(
     log::info!("User: {} Talk: {:?}", &chat_id, &talk);
     let chat_client = my_state.chat_client.clone();
     let ts = talk.get_conv(&chat_client).await?;
-    let conv = Some(ts.conv);
+    let thread = ts.thread;
+    let asst = ts.asst;
+    let run_request = CreateRunRequestArgs::default()
+        .assistant_id(&asst.id)
+        .build()?;
     let presuff = ts.presuff;
     if let Some(msg) = ts.msg {
         send_markdown(bot, chat_id, &msg).await?;
     }
     let chat_conv = ChatConv {
         chat_client,
-        conv,
+        thread_id: thread.id,
+        run_request,
         presuff,
     };
     dialogue
         .update(State::DoTalk {
-            my_state,
             chat_conv,
         })
         .await?;
@@ -389,44 +393,31 @@ async fn start_talk(
 
 async fn do_talk(
     bot: Bot,
-    dialogue: MyDialogue,
     msg: Message,
-    tup_state: (Arc<MyState>, ChatConv),
+    chat_conv: ChatConv,
 ) -> HandlerResult {
-    let (my_state, chat_conv) = tup_state;
     let chat_id = msg.chat.id;
     let (pre, suff) = chat_conv.presuff.clone();
     let mut msg_out = pre;
     msg_out.push_str(msg.text().ok_or(Error::msg("## Error in message! ##"))?);
     msg_out.push_str(&suff);
-    let mut conv = chat_conv.conv.ok_or(Error::msg("## No conversation! ##"))?;
-    let stream = conv.send_message_streaming(msg_out).await;
-    match stream {
-        Ok(stream) => {
-            let resp = send_stream(bot, chat_id, stream).await?;
-            // save reply in chat history
-            if let Some(resp) = resp {
-                conv.history.push(resp);
-            }
-        }
-        Err(_) => {
-            bot.send_message(
-                chat_id,
-                "-- Max tokens exceeded, please re-/start the conversation. --",
-            )
-            .await?;
-        }
-    }
-    let chat_conv = ChatConv {
-        conv: Some(conv),
-        ..chat_conv
-    };
-    dialogue
-        .update(State::DoTalk {
-            my_state,
-            chat_conv,
-        })
+    let thread_id = &chat_conv.thread_id;
+    let chat_client = &chat_conv.chat_client;
+    let message = CreateMessageRequestArgs::default()
+        .role("user")
+        .content(msg_out)
+        .build()?;
+    let _message_obj = chat_client
+        .threads()
+        .messages(thread_id)
+        .create(message)
         .await?;
+    let run = chat_client
+        .threads()
+        .runs(thread_id)
+        .create(chat_conv.run_request)
+        .await?;
+    send_pseudo_stream(bot, chat_id, chat_client, &run.id, thread_id).await?;
 
     Ok(())
 }
@@ -457,6 +448,23 @@ async fn update_markdown(bot: Bot, chat_id: ChatId, m_id: MessageId, msg: &str) 
     Ok(())
 }
 
+async fn send_pseudo_stream(
+    bot: Bot,
+    chat_id: ChatId,
+    chat_client: &Client<OpenAIConfig>,
+    run_id: &str,
+    thread_id: &str,
+) -> Result<()> {
+    // send message zero
+    let zero = bot.send_message(chat_id, "...").await?;
+    let m_id = zero.id;
+    // send/update final msg
+    let resp = get_response(chat_client, run_id, thread_id).await?;
+    update_markdown(bot, chat_id, m_id, &resp).await
+}
+
+
+/*
 async fn send_stream(
     bot: Bot,
     chat_id: ChatId,
@@ -503,3 +511,4 @@ async fn send_stream(
     let msgs = ChatMessage::from_response_chunks(output);
     Ok(msgs.first().cloned())
 }
+*/
