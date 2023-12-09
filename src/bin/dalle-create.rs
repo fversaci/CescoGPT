@@ -30,7 +30,7 @@ use std::path::PathBuf;
 struct Args {
     /// Text file containing the prompt (max 1000 chars)
     prompt_file: PathBuf,
-    /// Enable high details image generation
+    /// Enable high detail image generation
     #[arg(long)]
     hd: bool,
 }
