@@ -62,7 +62,7 @@ pub async fn get_conv(
         .runs(&thread.id)
         .create(run_request.clone())
         .await?;
-    let resp = get_response(client, &run, &thread.id).await?;
+    let resp = get_response(client, &run.id, &thread.id).await?;
     let presuff = ("<correct_me>\n".to_string(), "\n</correct_me>".to_string());
     let ts = TalkStart {
         thread,

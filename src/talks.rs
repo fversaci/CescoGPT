@@ -16,8 +16,8 @@
 
 use anyhow::{anyhow, Error, Result};
 use async_openai::types::{
-    AssistantObject, CreateMessageRequestArgs, CreateThreadRequestArgs, MessageContent, RunObject,
-    RunStatus, ThreadObject,
+    AssistantObject, CreateMessageRequestArgs, CreateThreadRequestArgs, MessageContent, RunStatus,
+    ThreadObject,
 };
 use async_openai::{config::OpenAIConfig, Client};
 use strum_macros::{Display, EnumIter, EnumString};
@@ -104,11 +104,11 @@ async fn get_asst_thread(
 
 pub async fn get_response(
     client: &Client<OpenAIConfig>,
-    run: &RunObject,
+    run_id: &str,
     thread_id: &str,
 ) -> Result<String> {
     loop {
-        let run = client.threads().runs(thread_id).retrieve(&run.id).await?;
+        let run = client.threads().runs(thread_id).retrieve(run_id).await?;
         if let RunStatus::Completed = run.status {
             let query = [("limit", "5")];
             let response = client.threads().messages(thread_id).list(&query).await?;

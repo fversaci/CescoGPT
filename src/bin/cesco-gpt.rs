@@ -128,7 +128,7 @@ async fn main() -> Result<()> {
             .runs(&thread.id)
             .create(run_request.clone())
             .await?;
-        let resp = get_response(&client, &run, &thread.id).await?;
+        let resp = get_response(&client, &run.id, &thread.id).await?;
         println!("{resp}\n");
     }
 
