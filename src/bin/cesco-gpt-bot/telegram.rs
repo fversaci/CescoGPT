@@ -15,9 +15,9 @@
 **************************************************************************/
 use crate::{ChatConv, HashSet, MyState};
 use anyhow::{Error, Result};
-use async_openai::Client;
 use async_openai::config::OpenAIConfig;
 use async_openai::types::{CreateMessageRequestArgs, CreateRunRequestArgs};
+use async_openai::Client;
 use cesco_gpt::talks::lang_practice::{Lang, LangLevel};
 use cesco_gpt::talks::{get_response, Talk};
 use chrono::prelude::*;
@@ -95,12 +95,7 @@ pub fn schema(
 
     let message_handler = Update::filter_message()
         .branch(command_handler)
-        .branch(
-            case![State::DoTalk {
-                chat_conv
-            }]
-            .endpoint(do_talk),
-        )
+        .branch(case![State::DoTalk { chat_conv }].endpoint(do_talk))
         .branch(dptree::endpoint(invalid_state));
 
     let callback_query_handler = Update::filter_callback_query()
@@ -154,12 +149,7 @@ fn allowed(chat_id: &ChatId, whitelist: &HashSet<ChatId>) -> bool {
     whitelist.is_empty() | whitelist.contains(chat_id)
 }
 
-async fn bouncer(
-    bot: Bot,
-    dialogue: MyDialogue,
-    msg: Message,
-    my_state: MyState,
-) -> HandlerResult {
+async fn bouncer(bot: Bot, dialogue: MyDialogue, msg: Message, my_state: MyState) -> HandlerResult {
     bot.set_my_commands(Command::bot_commands()).await?;
     // whitelist check
     let chat_id = msg.chat.id;
@@ -382,19 +372,11 @@ async fn start_talk(
         run_request,
         presuff,
     };
-    dialogue
-        .update(State::DoTalk {
-            chat_conv,
-        })
-        .await?;
+    dialogue.update(State::DoTalk { chat_conv }).await?;
     Ok(())
 }
 
-async fn do_talk(
-    bot: Bot,
-    msg: Message,
-    chat_conv: ChatConv,
-) -> HandlerResult {
+async fn do_talk(bot: Bot, msg: Message, chat_conv: ChatConv) -> HandlerResult {
     let chat_id = msg.chat.id;
     let (pre, suff) = chat_conv.presuff.clone();
     let mut msg_out = pre;
@@ -461,7 +443,6 @@ async fn send_pseudo_stream(
     let resp = get_response(chat_client, run_id, thread_id).await?;
     update_markdown(bot, chat_id, m_id, &resp).await
 }
-
 
 /*
 async fn send_stream(
