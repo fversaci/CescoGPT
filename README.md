@@ -1,4 +1,4 @@
-# CescoGPT: a Telegram bot and CLI for language practice and more, powered by ChatGPT Assistants (and Rust)
+# CescoGPT: a Telegram bot and CLI for language practice and more
 
 ## Overview
 
