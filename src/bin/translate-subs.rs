@@ -68,7 +68,7 @@ fn get_parser(subs_fn: PathBuf) -> Result<SubRip> {
 }
 
 async fn translate_str(
-    msg: String,
+    msg: &str,
     client: &Client<OpenAIConfig>,
     thread_id: &str,
     run_request: &CreateRunRequest,
@@ -87,24 +87,24 @@ async fn translate_str(
     Ok(resp)
 }
 
-fn flatten_chunk(chunk: &[SrtSubtitle]) -> String {
+fn flatten_chunk(chunk: &[SrtSubtitle], presuff: &(String, String)) -> String {
+    let (pre, suff) = presuff; // initial and final delimiters
     let mut out_str = String::new();
+    out_str.push_str(pre);
     for block in chunk {
-        out_str.push_str(&format!(
-            "{}\n\n<NewBlock>\n\n",
-            block.text.join("\n")
-        ));
+        out_str.push_str(&format!("{}\n\n♥♥♥\n\n", block.text.join("\n")));
     }
+    out_str.push_str(suff);
     out_str
 }
 
 fn text2chunk(flat_text: &str, in_chunk: &[SrtSubtitle]) -> Result<Vec<SrtSubtitle>> {
     let mut out_chunk = Vec::new();
-    let blocks = flat_text.split("<NewBlock>");
+    let blocks = flat_text.split("♥♥♥");
     for (in_block, text) in in_chunk.into_iter().zip(blocks) {
         let text = text.trim_start_matches('\n').trim_end_matches('\n');
-        let text = vec!(text.to_string());
-        let trans_block = SrtSubtitle {text, ..*in_block};
+        let text = vec![text.to_string()];
+        let trans_block = SrtSubtitle { text, ..*in_block };
         out_chunk.push(trans_block);
     }
     Ok(out_chunk)
@@ -115,9 +115,23 @@ async fn translate_chunk(
     client: &Client<OpenAIConfig>,
     thread_id: &str,
     run_request: &CreateRunRequest,
+    presuff: &(String, String),
 ) -> Result<Vec<SrtSubtitle>> {
-    let flat_text = flatten_chunk(chunk);
-    let trans_flat_text = translate_str(flat_text, client, thread_id, run_request).await?;
+    let flat_text = flatten_chunk(chunk, presuff);
+    let mut go_on = true;
+    let max_reps = 1;
+    let mut cow = 0;
+    let mut trans_flat_text = "".to_string();
+    // repeat until it produces the same number of srt blocks (up to max_reps times)
+    while go_on {
+        trans_flat_text = translate_str(&flat_text, client, thread_id, run_request).await?;
+        cow += 1;
+        let trans_count = trans_flat_text.matches("♥♥♥").count();
+        println!("in: {} trans: {} reps: {}", chunk.len(), trans_count, cow);
+        if trans_count == chunk.len() || cow == max_reps {
+            go_on = false;
+        }
+    }
     text2chunk(&trans_flat_text, chunk)
 }
 
@@ -132,6 +146,7 @@ async fn main() -> Result<()> {
     // start assistant
     let talk = TranslateSubs { lang: args.lang };
     let ts = talk.get_conv(&client).await?;
+    let presuff = ts.presuff;
     let thread = ts.thread;
     let asst = ts.asst;
     let run_request = CreateRunRequestArgs::default()
@@ -141,9 +156,10 @@ async fn main() -> Result<()> {
     let srt = get_parser(args.in_srt)?;
     let mut out_file = File::create(args.out_srt)?;
     let mut out_blocks = Vec::new();
-    let chunk_size = 100;
+    let chunk_size = 32;
     for chunk in srt.subtitles.chunks(chunk_size) {
-        let translated_chunk = translate_chunk(chunk, &client, &thread.id, &run_request).await?;
+        let translated_chunk =
+            translate_chunk(chunk, &client, &thread.id, &run_request, &presuff).await?;
         for block in translated_chunk {
             writeln!(out_file, "{}", block)?;
             out_blocks.push(block);
