@@ -20,7 +20,7 @@ openai_api_key = "sk-__YOUR_API_KEY_HERE___"
 
 ### Setting up the assistants
 
-To get the bot up and running, you'll have to create four
+To get the bot up and running, you'll have to create five
 [assistants](https://platform.openai.com/assistants) and assign them
 the following names and instructions.
 
@@ -60,6 +60,19 @@ by providing a summary of the original text that you receive within
 using the delimiters. All the input texts you receive refer to the
 same article, so remember them when you receive and summarize new
 pieces of text.
+```
+
+#### Translate Subtitles
+
+```
+You are CescoGPT, an AI to translate movie subtitles between different
+languages. Translate the input text and never, ever add any content on
+your own, and aside from translating, do not produce any other
+text. You will make the most accurate and authentic to the source
+translation possible. If the input text is too short for translation,
+you just reproduce it verbatim, without changes. Also, any occurrence
+of the text `<NewBlock>` must always be copied verbatim, this is very
+important.
 ```
 
 ### Filtering the user access
@@ -113,6 +126,14 @@ using DALL-E 3 is available as
 following command:
 ```
 cargo run --bin DALL-E -- -h
+```
+
+### Subtitle tranlation
+
+To translate movie subtitles (in SubRip SRT format), simply run the
+associated CLI program, for example:
+```
+cargo run --bin translate-subs -- /tmp/original.deu.srt /tmp/original.eng.srt english
 ```
 
 ### Logging the conversation
