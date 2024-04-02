@@ -185,7 +185,7 @@ async fn keyb_query(
 
 async fn select_talk(bot: Bot, dialogue: MyDialogue, my_state: MyState) -> HandlerResult {
     let talks_per_row = 2;
-    let talks: Vec<Talk> = Talk::iter().collect();
+    let talks: Vec<Talk> = Talk::iter().filter(|talk| talk.runs_on_bot()).collect();
     let talks = talks.chunks(talks_per_row).map(|row| {
         row.iter()
             .map(|talk| talk.to_string())
@@ -218,11 +218,10 @@ async fn init_talk(
     let talk = q.data.unwrap_or_default();
     let talk = Talk::from_str(&talk).unwrap_or_default();
     match talk {
-        Talk::Generic => start_talk(bot, dialogue, talk, my_state).await,
         Talk::Correct { .. } => choose_native(bot, dialogue, talk, my_state).await,
-        Talk::LanguagePractice { .. } | Talk::Summarize { .. } => {
-            choose_lang(bot, dialogue, talk, my_state).await
-        }
+        Talk::LanguagePractice { .. } => choose_lang(bot, dialogue, talk, my_state).await,
+        // Talk::Generic
+        _ => start_talk(bot, dialogue, talk, my_state).await,
     }
 }
 

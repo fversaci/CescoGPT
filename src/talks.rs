@@ -25,6 +25,7 @@ mod basic;
 mod correct;
 pub mod lang_practice;
 mod summarize;
+mod translate_subs;
 use clap::Subcommand;
 use lang_practice::{Lang, LangLevel};
 
@@ -62,6 +63,12 @@ pub enum Talk {
         lang: Lang,
         #[arg(value_enum)]
         level: LangLevel,
+    },
+    /// Translate subtitles into chosen language
+    #[strum(serialize = "Translate Subtitles")]
+    TranslateSubs {
+        #[arg(value_enum)]
+        lang: Lang,
     },
 }
 
@@ -113,12 +120,12 @@ pub async fn get_response(
             let query = [("limit", "5")];
             let response = client.threads().messages(thread_id).list(&query).await?;
             // println!("{:?}", response);
-            let content = response.data.get(0).unwrap().content.get(0).unwrap();
+            let content = response.data.first().unwrap().content.first().unwrap();
             if let MessageContent::Text(text) = content {
                 return Ok(text.text.value.clone());
             }
         } else {
-            std::thread::sleep(std::time::Duration::from_secs(1));
+            std::thread::sleep(std::time::Duration::from_millis(250));
         }
     }
 }
@@ -134,6 +141,18 @@ impl Talk {
             Talk::Summarize { lang, level } => {
                 summarize::get_conv(client, &self.to_string(), lang, level).await
             }
+            Talk::TranslateSubs { lang } => {
+                translate_subs::get_conv(client, &self.to_string(), lang).await
+            }
+        }
+    }
+    pub fn runs_on_bot(&self) -> bool {
+        match self {
+            Talk::Generic => true,
+            Talk::LanguagePractice { .. } => true,
+            Talk::Correct { .. } => true,
+            Talk::Summarize { .. } => false,
+            Talk::TranslateSubs { .. } => false,
         }
     }
 }
