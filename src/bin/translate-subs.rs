@@ -93,7 +93,7 @@ fn chunk_to_json(chunk: &[SrtSubtitle], lang: &Lang) -> Result<String> {
     let chunk_dict: HashMap<usize, Vec<String>> = chunk_text.into_iter().enumerate().collect();
     let json_str = serde_json::to_string(&chunk_dict)?;
     let cmd = format!(
-        "Translate these subtitles into {} language. Your output is exactly in the same json format as the input.\n",
+        "Translate these subtitles into {} language. Your output must have exactly the same json format as the input.\n",
         lang
     );
     let cmd_json_str = format!("{}{}", cmd, json_str);
@@ -125,7 +125,14 @@ async fn translate_chunk(
     let ret = json_to_chunk(&trans_json_str, chunk);
     match ret {
         Ok(..) => ret,
-        _ => Ok(chunk.to_vec()),
+        _ => {
+            println!(
+                "Error: skipping chunk {}-{}",
+                chunk.first().unwrap().sequence,
+                chunk.last().unwrap().sequence
+            );
+            Ok(chunk.to_vec())
+        }
     }
 }
 
