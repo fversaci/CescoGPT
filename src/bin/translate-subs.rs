@@ -120,20 +120,42 @@ async fn translate_chunk(
     run_request: &CreateRunRequest,
     lang: &Lang,
 ) -> Result<Vec<SrtSubtitle>> {
+    // check chunk
+    if chunk.is_empty() {
+        anyhow::bail!("Error: empty chunk");
+    }
+    // try and translate it
     let json_str = chunk_to_json(chunk, lang)?;
     let trans_json_str = translate_str(&json_str, client, thread_id, run_request).await?;
     let ret = json_to_chunk(&trans_json_str, chunk);
-    match ret {
-        Ok(..) => ret,
-        _ => {
-            println!(
-                "Error: skipping chunk {}-{}",
-                chunk.first().unwrap().sequence,
-                chunk.last().unwrap().sequence
-            );
-            Ok(chunk.to_vec())
-        }
+    if ret.is_ok() {
+        return ret;
     }
+    // Couldn't translate, log, divide et impera
+    println!(
+        "Dividing chunk {}-{}",
+        chunk.first().unwrap().sequence,
+        chunk.last().unwrap().sequence
+    );
+    let (chunk_up, chunk_down) = chunk.split_at(chunk.len() / 2);
+    let trans_up = Box::pin(translate_chunk(
+        chunk_up,
+        client,
+        thread_id,
+        run_request,
+        lang,
+    ))
+    .await?;
+    let trans_down = Box::pin(translate_chunk(
+        chunk_down,
+        client,
+        thread_id,
+        run_request,
+        lang,
+    ))
+    .await?;
+    let merged = trans_up.iter().chain(trans_down.iter()).cloned().collect();
+    Ok(merged)
 }
 
 #[tokio::main]
