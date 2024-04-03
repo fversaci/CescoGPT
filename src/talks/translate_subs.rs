@@ -25,10 +25,7 @@ pub async fn get_conv(
 ) -> Result<TalkStart, Error> {
     let refine = format!("You will always translate the subtitles into {lang} language.");
     let (asst, thread) = get_asst_thread(client, name, Some(&refine)).await?;
-    let presuff = (
-        "<translate_me>\n".to_string(),
-        "\n<translate_me>".to_string(),
-    );
+    let presuff = ("".to_string(), "".to_string());
     let msg = Some("Enter the subtitles and I'll translate them for you.".to_string());
     let ts = TalkStart {
         thread,
