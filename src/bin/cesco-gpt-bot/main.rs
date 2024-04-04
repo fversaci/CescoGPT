@@ -25,7 +25,6 @@ mod telegram;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MyBotConfig {
     id_whitelist: HashSet<ChatId>,
-    openai_api_key: String,
 }
 
 #[derive(Clone)]
@@ -58,9 +57,7 @@ async fn main() -> Result<()> {
     let bot = Bot::from_env();
     let my_conf = get_conf();
     log::debug!("{my_conf:?}");
-    let key = &my_conf.openai_api_key;
-    let config = OpenAIConfig::new().with_api_key(key);
-    let chat_client = Client::with_config(config);
+    let chat_client = Client::new();
     let my_state = MyState {
         my_conf,
         chat_client,
