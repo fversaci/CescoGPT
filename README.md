@@ -79,9 +79,10 @@ changes. Your output is exactly in the same json format as the input.
 
 ### Filtering the user access
 
-The configuration file [conf/defaults.toml](conf/defaults.toml)
-contains an `id_whitelist` field, which can be filled with a list of
-allowed Telegram user_ids:
+The configuration file
+[conf/defaults.toml](conf/defaults.toml.template) must contain an
+`id_whitelist` field, which can be filled with a list of allowed
+Telegram user_ids:
 ```toml
 id_whitelist = [
   123456789,  # myself
