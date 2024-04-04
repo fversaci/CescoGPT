@@ -26,7 +26,9 @@ use std::fs::File;
 use std::io::Write;
 use std::io::{BufReader, Read};
 use std::path::PathBuf;
+use std::sync::Arc;
 use subtp::srt::{SrtSubtitle, SubRip};
+use tokio::sync::Mutex;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -37,6 +39,12 @@ struct Args {
     out_srt: PathBuf,
     /// Language to translate to
     lang: Lang,
+    /// Number of blocks per query
+    #[arg(default_value_t = 64)]
+    chunk: usize,
+    /// Number of parallel translators
+    #[arg(default_value_t = 1)]
+    num: usize,
 }
 
 struct Translator {
@@ -84,10 +92,6 @@ impl Translator {
         Ok(resp)
     }
     async fn translate_chunk(&self, chunk: &[SrtSubtitle]) -> Result<Vec<SrtSubtitle>> {
-        // check chunk
-        if chunk.is_empty() {
-            anyhow::bail!("Error: empty chunk");
-        }
         // try and translate it
         let json_str = chunk_to_json(chunk, &self.lang)?;
         let trans_json_str = self.translate_str(&json_str).await?;
@@ -95,7 +99,12 @@ impl Translator {
         if ret.is_ok() {
             return ret;
         }
-        // Couldn't translate, log, divide et impera
+        // Couldn't translate even a single block, use the original
+        if chunk.len() == 1 {
+            println!("Copying verbatim block {}", chunk.first().unwrap().sequence);
+            return Ok(chunk.to_vec());
+        }
+        // More lines, try divide et impera
         println!(
             "Dividing chunk {}-{}",
             chunk.first().unwrap().sequence,
@@ -109,6 +118,34 @@ impl Translator {
     }
 }
 
+struct TranslatorPool {
+    translators: Vec<Arc<Mutex<Translator>>>,
+    curr: usize,
+    num: usize,
+}
+
+impl TranslatorPool {
+    async fn new(num: usize, client: Client<OpenAIConfig>, lang: Lang) -> Result<Self> {
+        if num == 0 {
+            anyhow::bail!("Error: pool must have at least 1 translator");
+        }
+        let mut translators = Vec::new();
+        for _ in 0..num {
+            let translator = Translator::new(client.clone(), lang.clone()).await?;
+            translators.push(Arc::new(Mutex::new(translator)));
+        }
+        let ret = Self {
+            translators,
+            curr: 0,
+            num,
+        };
+        Ok(ret)
+    }
+    fn get_translator(&mut self) -> Arc<Mutex<Translator>> {
+        let translator = self.translators[self.curr].clone();
+        self.curr = (self.curr + 1) % self.num; // Move to the next translator
+        translator
+    }
 }
 
 fn get_parser(subs_fn: PathBuf) -> Result<SubRip> {
@@ -153,17 +190,29 @@ fn json_to_chunk(json_str: &str, in_chunk: &[SrtSubtitle]) -> Result<Vec<SrtSubt
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    // start assistant and translate subs
-    let translator = Translator::new(client, args.lang).await?;
     let client = Client::new();
+    // start assistants and translate subs
+    let mut pool = TranslatorPool::new(args.num, client, args.lang).await?;
     let srt = get_parser(args.in_srt)?;
     let mut out_file = File::create(args.out_srt)?;
-    let chunk_size = 64;
-    for chunk in srt.subtitles.chunks(chunk_size) {
-        let translated_chunk = translator.translate_chunk(chunk).await?;
-        for block in translated_chunk {
+    let mut jobs = Vec::new();
+    for chunk in srt.subtitles.chunks(args.chunk) {
+        // Translate each chunk concurrently using the pool
+        let chunk = chunk.to_vec();
+        let t = pool.get_translator();
+        let task = tokio::spawn(async move {
+            let t = t.lock().await;
+            t.translate_chunk(&chunk).await
+        });
+        jobs.push(task);
+    }
+    // Collect and write the translated blocks to the output file
+    for job in jobs {
+        let translated_chunk = job.await?;
+        for block in translated_chunk? {
             writeln!(out_file, "{}", block)?;
         }
     }
+
     Ok(())
 }
