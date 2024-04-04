@@ -14,10 +14,10 @@ for a variety of purposes:
 
 ###  Setting the API key
 
-In order to use the bot you need a *paid* openAI API key, which must be
-filled in the configuration file [conf/defaults.toml](conf/defaults.toml):
-```toml
-openai_api_key = "sk-__YOUR_API_KEY_HERE___"
+In order to use the bot you need a *paid* openAI API key, which must
+be set in the environment variable `OPENAI_API_KEY`:
+```bash
+export OPENAI_API_KEY="sk-__YOUR_API_KEY_HERE___"
 ```
 
 ### Setting up the assistants

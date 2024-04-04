@@ -18,11 +18,9 @@ use anyhow::Result;
 use async_openai::types::{
     ChatCompletionResponseStream, CreateMessageRequestArgs, CreateRunRequestArgs,
 };
-use async_openai::{config::OpenAIConfig, Client};
+use async_openai::Client;
 use cesco_gpt::talks::{get_response, Talk};
 use clap::Parser;
-use serde::{Deserialize, Serialize};
-use std::fs;
 use std::io::{stdout, Write};
 use tokio_stream::{Stream, StreamExt};
 
@@ -32,20 +30,6 @@ struct Args {
     /// Choose which conversation to start
     #[command(subcommand)]
     talk: Talk,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct MyCLIConfig {
-    openai_api_key: String,
-}
-
-fn get_conf() -> MyCLIConfig {
-    let fname = "conf/defaults.toml";
-    let conf_txt = fs::read_to_string(fname)
-        .unwrap_or_else(|_| panic!("Cannot find configuration file: {}", fname));
-    let my_conf: MyCLIConfig = toml::from_str(&conf_txt)
-        .unwrap_or_else(|err| panic!("Unable to parse configuration file {}: {}", fname, err));
-    my_conf
 }
 
 fn read_msg(presuff: &(String, String)) -> Option<String> {
@@ -94,13 +78,7 @@ async fn print_stream(mut stream: ChatCompletionResponseStream) -> Result<()> {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    let my_conf = get_conf();
-    log::debug!("{my_conf:?}");
-    let key = &my_conf.openai_api_key;
-
-    let config = OpenAIConfig::new().with_api_key(key);
-    let client = Client::with_config(config);
-
+    let client = Client::new();
     let talk = args.talk;
     let ts = talk.get_conv(&client).await?;
     let thread = ts.thread;

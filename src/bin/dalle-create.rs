@@ -18,10 +18,9 @@ use anyhow::Result;
 use async_openai::types::{
     CreateImageRequestArgs, ImageModel, ImageQuality, ImageSize, ResponseFormat,
 };
-use async_openai::{config::OpenAIConfig, Client};
+use async_openai::Client;
 use clap::Parser;
-use serde::{Deserialize, Serialize};
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::PathBuf;
 
@@ -35,28 +34,10 @@ struct Args {
     hd: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct MyCLIConfig {
-    openai_api_key: String,
-}
-
-fn get_conf() -> MyCLIConfig {
-    let fname = "conf/defaults.toml";
-    let conf_txt = fs::read_to_string(fname)
-        .unwrap_or_else(|_| panic!("Cannot find configuration file: {}", fname));
-    let my_conf: MyCLIConfig = toml::from_str(&conf_txt)
-        .unwrap_or_else(|err| panic!("Unable to parse configuration file {}: {}", fname, err));
-    my_conf
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    let my_conf = get_conf();
-    log::debug!("{my_conf:?}");
-    let key = &my_conf.openai_api_key;
-    let config = OpenAIConfig::new().with_api_key(key);
-    let client = Client::with_config(config);
+    let client = Client::new();
     // read prompt from file
     let prompt_f = File::open(args.prompt_file)?;
     let mut prompt = String::new();
