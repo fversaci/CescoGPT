@@ -40,10 +40,10 @@ struct Args {
     /// Language to translate to
     lang: Lang,
     /// Number of blocks per query
-    #[arg(default_value_t = 64)]
+    #[arg(long, default_value_t = 64)]
     chunk: usize,
     /// Number of parallel translators
-    #[arg(default_value_t = 1)]
+    #[arg(long, default_value_t = 1)]
     num: usize,
 }
 
