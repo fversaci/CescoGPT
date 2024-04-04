@@ -135,6 +135,11 @@ associated CLI program, for example:
 ```
 cargo run --bin translate-subs -- /tmp/original.deu.srt /tmp/translated.eng.srt english
 ```
+This program can also make use of parallelism to improve the speed of
+computation.  For details, run:
+```
+cargo run --bin translate-subs -- -help
+```
 
 ### Logging the conversation
 
