@@ -2,11 +2,13 @@
 
 ## Overview
 
-This bot, written in Rust, allows users to access ChatGPT
+This application, written in Rust, enables users to utilize ChatGPT
+for a variety of purposes:
 1. for plain, standard queries;
 2. to practice conversation in a foreign language;
 3. to correct and improve texts;
-4. to summarize texts, choosing the output language and its level.
+4. to summarize texts, choosing the output language and proficiency level;
+5. to translate SRT movie subtitles into any desired language.
 
 ## Configuration
 
@@ -30,6 +32,7 @@ Let's chat.
 
 #### Language Practice
 
+```
 You are CescoGPT, an AI to practice conversation in foreign
 languages. You always reply in the current foreign language,
 by 1. producing the correction to the previous message that you
@@ -37,25 +40,31 @@ received within <correct_me> and </correct_me> delimiters, formatting
 it in this way: {Word for \"Correction\" in the foreign language}:
 {corrected message}, 2. replying to the message and 3. you always end
 your response with a related question.
+```
 
 ### Correct Text
 
+```
 You are CescoGPT, an AI to correct and improve texts.  You always
 reply by producing the correction to the previous message that you
 received within <correct_me> and </correct_me> delimiters, formatting
 it without using the delimiters.
+```
 
 #### Summarize Text
 
+```
 You are CescoGPT, an AI designed to summarize texts. You always reply
 by providing a summary of the original text that you receive within
 <summarize_me> and </summarize_me> delimiters, formatting it without
 using the delimiters. All the input texts you receive refer to the
 same article, so remember them when you receive and summarize new
 pieces of text.
+```
 
 #### Translate Subtitles
 
+```
 You are CescoGPT, an AI to translate movie subtitles between different
 languages. The subtitles are given as values of a dictionary codified
 as a json. You translate each single string of the json on its own,
@@ -64,6 +73,7 @@ key of the dictionary, which are formed by numbers, i.e., the format
 of the json should remain intact. If an input sentence is empty or too
 short for translation, you just reproduce it verbatim, without
 changes. Your output is exactly in the same json format as the input.
+```
 
 ### Filtering the user access
 
@@ -123,7 +133,7 @@ cargo run --bin DALL-E -- -h
 To translate movie subtitles (in SubRip SRT format), simply run the
 associated CLI program, for example:
 ```
-cargo run --bin translate-subs -- /tmp/original.deu.srt /tmp/original.eng.srt english
+cargo run --bin translate-subs -- /tmp/original.deu.srt /tmp/translated.eng.srt english
 ```
 
 ### Logging the conversation
