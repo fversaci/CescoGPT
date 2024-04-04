@@ -45,6 +45,76 @@ pub struct MyCLIConfig {
     openai_api_key: String,
 }
 
+struct Translator {
+    client: Client<OpenAIConfig>,
+    thread_id: String,
+    run_request: CreateRunRequest,
+    lang: Lang,
+}
+
+impl Translator {
+    async fn new(client: Client<OpenAIConfig>, lang: Lang) -> Result<Self> {
+        let talk = TranslateSubs { lang: lang.clone() };
+        let ts = talk.get_conv(&client).await?;
+        let thread = ts.thread;
+        let asst = ts.asst;
+        let run_request = CreateRunRequestArgs::default()
+            .assistant_id(&asst.id)
+            .build()?;
+
+        Ok(Self {
+            client,
+            thread_id: thread.id,
+            run_request,
+            lang,
+        })
+    }
+    async fn translate_str(&self, msg: &str) -> Result<String> {
+        let message = CreateMessageRequestArgs::default()
+            .role("user")
+            .content(msg)
+            .build()?;
+        let _message_obj = self
+            .client
+            .threads()
+            .messages(&self.thread_id)
+            .create(message)
+            .await?;
+        let run = self
+            .client
+            .threads()
+            .runs(&self.thread_id)
+            .create(self.run_request.clone())
+            .await?;
+        let resp = get_response(&self.client, &run.id, &self.thread_id).await?;
+        Ok(resp)
+    }
+    async fn translate_chunk(&self, chunk: &[SrtSubtitle]) -> Result<Vec<SrtSubtitle>> {
+        // check chunk
+        if chunk.is_empty() {
+            anyhow::bail!("Error: empty chunk");
+        }
+        // try and translate it
+        let json_str = chunk_to_json(chunk, &self.lang)?;
+        let trans_json_str = self.translate_str(&json_str).await?;
+        let ret = json_to_chunk(&trans_json_str, chunk);
+        if ret.is_ok() {
+            return ret;
+        }
+        // Couldn't translate, log, divide et impera
+        println!(
+            "Dividing chunk {}-{}",
+            chunk.first().unwrap().sequence,
+            chunk.last().unwrap().sequence
+        );
+        let (chunk_up, chunk_down) = chunk.split_at(chunk.len() / 2);
+        let trans_up = Box::pin(self.translate_chunk(chunk_up)).await?;
+        let trans_down = Box::pin(self.translate_chunk(chunk_down)).await?;
+        let merged = trans_up.iter().chain(trans_down.iter()).cloned().collect();
+        Ok(merged)
+    }
+}
+
 fn get_conf() -> MyCLIConfig {
     let fname = "conf/defaults.toml";
     let conf_txt = fs::read_to_string(fname)
@@ -66,26 +136,6 @@ fn get_parser(subs_fn: PathBuf) -> Result<SubRip> {
     file_reader.read_to_string(&mut subs)?;
     // parse text
     Ok(SubRip::parse(&subs)?)
-}
-
-async fn translate_str(
-    msg: &str,
-    client: &Client<OpenAIConfig>,
-    thread_id: &str,
-    run_request: &CreateRunRequest,
-) -> Result<String> {
-    let message = CreateMessageRequestArgs::default()
-        .role("user")
-        .content(msg)
-        .build()?;
-    let _message_obj = client.threads().messages(thread_id).create(message).await?;
-    let run = client
-        .threads()
-        .runs(thread_id)
-        .create(run_request.clone())
-        .await?;
-    let resp = get_response(client, &run.id, thread_id).await?;
-    Ok(resp)
 }
 
 fn chunk_to_json(chunk: &[SrtSubtitle], lang: &Lang) -> Result<String> {
@@ -113,51 +163,6 @@ fn json_to_chunk(json_str: &str, in_chunk: &[SrtSubtitle]) -> Result<Vec<SrtSubt
     Ok(out_chunk)
 }
 
-async fn translate_chunk(
-    chunk: &[SrtSubtitle],
-    client: &Client<OpenAIConfig>,
-    thread_id: &str,
-    run_request: &CreateRunRequest,
-    lang: &Lang,
-) -> Result<Vec<SrtSubtitle>> {
-    // check chunk
-    if chunk.is_empty() {
-        anyhow::bail!("Error: empty chunk");
-    }
-    // try and translate it
-    let json_str = chunk_to_json(chunk, lang)?;
-    let trans_json_str = translate_str(&json_str, client, thread_id, run_request).await?;
-    let ret = json_to_chunk(&trans_json_str, chunk);
-    if ret.is_ok() {
-        return ret;
-    }
-    // Couldn't translate, log, divide et impera
-    println!(
-        "Dividing chunk {}-{}",
-        chunk.first().unwrap().sequence,
-        chunk.last().unwrap().sequence
-    );
-    let (chunk_up, chunk_down) = chunk.split_at(chunk.len() / 2);
-    let trans_up = Box::pin(translate_chunk(
-        chunk_up,
-        client,
-        thread_id,
-        run_request,
-        lang,
-    ))
-    .await?;
-    let trans_down = Box::pin(translate_chunk(
-        chunk_down,
-        client,
-        thread_id,
-        run_request,
-        lang,
-    ))
-    .await?;
-    let merged = trans_up.iter().chain(trans_down.iter()).cloned().collect();
-    Ok(merged)
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
@@ -166,26 +171,15 @@ async fn main() -> Result<()> {
     let key = &my_conf.openai_api_key;
     let config = OpenAIConfig::new().with_api_key(key);
     let client = Client::with_config(config);
-    // start assistant
-    let lang = args.lang.clone();
-    let talk = TranslateSubs { lang: lang.clone() };
-    let ts = talk.get_conv(&client).await?;
-    let thread = ts.thread;
-    let asst = ts.asst;
-    let run_request = CreateRunRequestArgs::default()
-        .assistant_id(&asst.id)
-        .build()?;
-    // read and translate
+    // start assistant and translate subs
+    let translator = Translator::new(client, args.lang).await?;
     let srt = get_parser(args.in_srt)?;
     let mut out_file = File::create(args.out_srt)?;
-    let mut out_blocks = Vec::new();
     let chunk_size = 64;
     for chunk in srt.subtitles.chunks(chunk_size) {
-        let translated_chunk =
-            translate_chunk(chunk, &client, &thread.id, &run_request, &lang).await?;
+        let translated_chunk = translator.translate_chunk(chunk).await?;
         for block in translated_chunk {
             writeln!(out_file, "{}", block)?;
-            out_blocks.push(block);
         }
     }
     Ok(())
