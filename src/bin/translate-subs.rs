@@ -91,7 +91,7 @@ impl Translator {
         let resp = get_response(&self.client, &run.id, &self.thread_id).await?;
         Ok(resp)
     }
-    async fn translate_chunk(&self, chunk: &[SrtSubtitle]) -> Result<Vec<SrtSubtitle>> {
+    async fn translate_chunk(&mut self, chunk: &[SrtSubtitle]) -> Result<Vec<SrtSubtitle>> {
         // try and translate it
         let json_str = chunk_to_json(chunk, &self.lang)?;
         let trans_json_str = self.translate_str(&json_str).await?;
@@ -99,6 +99,9 @@ impl Translator {
         if ret.is_ok() {
             return ret;
         }
+        // Something went wrong, replace with a new translator
+        let new_trans = Translator::new(self.client.clone(), self.lang.clone()).await?;
+        *self = new_trans;
         // Couldn't translate even a single block, use the original
         if chunk.len() == 1 {
             println!("Copying verbatim block {}", chunk.first().unwrap().sequence);
@@ -201,7 +204,7 @@ async fn main() -> Result<()> {
         let chunk = chunk.to_vec();
         let t = pool.get_translator();
         let task = tokio::spawn(async move {
-            let t = t.lock().await;
+            let mut t = t.lock().await;
             t.translate_chunk(&chunk).await
         });
         jobs.push(task);
