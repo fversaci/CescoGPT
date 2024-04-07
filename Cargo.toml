@@ -7,9 +7,9 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.81"
-async-openai = "0.19.1"
-chrono = { version = "0.4.35", default-features = false, features = ["clock"]  }
-clap = { version = "4.5.3", features = ["derive"] }
+async-openai = "0.20.0"
+chrono = { version = "0.4.37", default-features = false, features = ["clock"]  }
+clap = { version = "4.5.4", features = ["derive"] }
 futures-util = "0.3.30"
 log = "0.4.21"
 pretty_env_logger = "0.5.0"
@@ -20,6 +20,6 @@ strum = "0.26.2"
 strum_macros = "0.26.2"
 subtp = "0.2.0"
 teloxide = { version = "0.12.2", features = ["macros", "auto-send"] }
-tokio = { version = "1.36.0", features = ["full"] }
+tokio = { version = "1.37.0", features = ["full"] }
 tokio-stream = "0.1.15"
 toml = "0.8.12"
