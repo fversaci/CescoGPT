@@ -1,4 +1,4 @@
-# CescoGPT: a Telegram bot and CLI for language practice and more
+# CescoGPT: a multipurpose CLI and Telegram bot, powered by OpenAI API
 
 ## Overview
 
@@ -8,7 +8,8 @@ for a variety of purposes:
 2. to practice conversation in a foreign language;
 3. to correct and improve texts;
 4. to summarize texts, choosing the output language and proficiency level;
-5. to translate SRT movie subtitles into any desired language.
+5. to translate SRT movie subtitles into any desired language;
+6. to transcribe audio files into text;
 
 ## Configuration
 
@@ -121,19 +122,25 @@ The CLI concatenates consecutive lines and sends them as a message
 once an empty line is encountered (i.e., *press enter twice to send
 the message*). An empty message ends the conversation.
 
+#### Logging the conversation
+
+To log your CLI conversation to a text file, you can simply use the `tee` command,
+as done in this example:
+```bash
+cargo run --bin cesco-gpt -- correct | tee /tmp/gpt-log.txt
+```
+
 ### Image generation via DALL-E 3
 
-A preliminary CLI program for generating images from text prompts
-using DALL-E 3 is available as
-[dalle-create](src/bin/dalle-create.rs). To view the syntax, use the
-following command:
+A CLI program for generating images from text prompts using DALL-E 3
+is also available. To view the syntax, use the following command:
 ```
-cargo run --bin DALL-E -- -h
+cargo run --bin dalle-create -- -h
 ```
 
 ### Subtitle tranlation
 
-To translate movie subtitles (in SubRip SRT format), simply run the
+To translate movie subtitles (in SubRip SRT format), run the
 associated CLI program, for example:
 ```
 cargo run --bin translate-subs -- /tmp/original.deu.srt /tmp/translated.eng.srt english
@@ -144,12 +151,17 @@ computation.  For details, run:
 cargo run --bin translate-subs -- -help
 ```
 
-### Logging the conversation
+### Speech to text
 
-To log your CLI conversation to a text file, you can simply use the `tee` command,
-as done in this example:
-```bash
-cargo run --bin cesco-gpt -- correct | tee /tmp/gpt-log.txt
+To transcribe audio files, run the associated CLI program, for example:
+```
+cargo run --bin speech-to-text -- /tmp/audio.m4a /tmp/script.txt
+```
+The program also supports [custom
+prompts](https://platform.openai.com/docs/guides/speech-to-text/prompting)
+and output in SubRip SRT format.  For details, run:
+```
+cargo run --bin speech-to-text -- -help
 ```
 
 ## Language customization
