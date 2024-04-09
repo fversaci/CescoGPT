@@ -29,7 +29,7 @@ struct Args {
     audio_fn: PathBuf,
     /// Output text file
     out_txt: PathBuf,
-    /// The input language in ISO-639-1 format (2 o 3 letters code)
+    /// The input language in ISO-639-1 format (2 letters code)
     #[arg(long)]
     lang: String,
     /// The model will try to match the style of the prompt
