@@ -166,7 +166,7 @@ translate-subs /tmp/original.deu.srt /tmp/translated.eng.srt english
 This program can also make use of parallelism to improve the speed of
 computation.  For details, run:
 ```
-translate-subs -help
+translate-subs -h
 ```
 
 ### Speech to text
@@ -179,7 +179,7 @@ The program also supports [custom
 prompts](https://platform.openai.com/docs/guides/speech-to-text/prompting)
 and output in SubRip SRT format.  For details, run:
 ```
-speech-to-text -help
+speech-to-text -h
 ```
 
 ## Language customization
