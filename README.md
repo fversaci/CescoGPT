@@ -108,12 +108,19 @@ generous, it is *highly recommended to populate the list* with the
 authorized users and to set appropriate spending limits for your
 OpenAI API keys.
 
+## Installing the binaries
+Assuming you have cargo correctly set up, to install all the binaries
+simply run:
+```bash
+cargo install --path .
+```
+
 ## Running the bot
 
-Assuming you have cargo correctly set up, just run:
+The Telegram bot can be run with;
 ```bash
 TELOXIDE_TOKEN=123_YOUR_TELEGRAM_BOT_TOKEN_567 \
-cargo run --bin cesco-gpt-bot
+cesco-gpt-bot
 ```
 To enable logging of debug information, also set the `RUST_LOG=debug`
 environment variable.
@@ -123,11 +130,11 @@ environment variable.
 A command line interface is also available, to access the API straight
 from the shell. Just run with:
 ```bash
-cargo run --bin cesco-gpt -- generic  # generic ChatGPT prompt
-cargo run --bin cesco-gpt -- language-practice german b2  # practice B2 German
-cargo run --bin cesco-gpt -- correct --native  # correct and rephrase as a native speaker
-cargo run --bin cesco-gpt -- summarize italian c2  # summarize a text into C2 Italian
-cargo run --bin cesco-gpt -- -h  # get detailed help
+cesco-gpt generic  # generic ChatGPT prompt
+cesco-gpt language-practice german b2  # practice B2 German
+cesco-gpt correct --native  # correct and rephrase as a native speaker
+cesco-gpt summarize italian c2  # summarize a text into C2 Italian
+cesco-gpt -h  # get detailed help
 ```
 The CLI concatenates consecutive lines and sends them as a message
 once an empty line is encountered (i.e., *press enter twice to send
@@ -138,7 +145,7 @@ the message*). An empty message ends the conversation.
 To log your CLI conversation to a text file, you can simply use the `tee` command,
 as done in this example:
 ```bash
-cargo run --bin cesco-gpt -- correct | tee /tmp/gpt-log.txt
+cesco-gpt correct | tee /tmp/gpt-log.txt
 ```
 
 ### Image generation via DALL-E 3
@@ -146,7 +153,7 @@ cargo run --bin cesco-gpt -- correct | tee /tmp/gpt-log.txt
 A CLI program for generating images from text prompts using DALL-E 3
 is also available. To view the syntax, use the following command:
 ```
-cargo run --bin dalle-create -- -h
+dalle-create -h
 ```
 
 ### Subtitle tranlation
@@ -154,25 +161,25 @@ cargo run --bin dalle-create -- -h
 To translate movie subtitles (in SubRip SRT format), run the
 associated CLI program, for example:
 ```
-cargo run --bin translate-subs -- /tmp/original.deu.srt /tmp/translated.eng.srt english
+translate-subs /tmp/original.deu.srt /tmp/translated.eng.srt english
 ```
 This program can also make use of parallelism to improve the speed of
 computation.  For details, run:
 ```
-cargo run --bin translate-subs -- -help
+translate-subs -help
 ```
 
 ### Speech to text
 
 To transcribe audio files, run the associated CLI program, for example:
 ```
-cargo run --bin speech-to-text -- /tmp/audio.m4a /tmp/script.txt
+speech-to-text /tmp/audio.m4a /tmp/script.txt
 ```
 The program also supports [custom
 prompts](https://platform.openai.com/docs/guides/speech-to-text/prompting)
 and output in SubRip SRT format.  For details, run:
 ```
-cargo run --bin speech-to-text -- -help
+speech-to-text -help
 ```
 
 ## Language customization
