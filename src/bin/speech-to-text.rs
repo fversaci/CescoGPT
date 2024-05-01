@@ -66,6 +66,6 @@ async fn main() -> Result<()> {
         let response = client.audio().transcribe_raw(request).await?;
         writeln!(out_file, "{}", String::from_utf8_lossy(response.as_ref()))?;
     }
-    
+
     Ok(())
 }
