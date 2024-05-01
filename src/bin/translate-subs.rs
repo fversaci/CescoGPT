@@ -311,7 +311,7 @@ fn json_to_chunk(
 
 fn is_end_of_sentence(character: &char) -> bool {
     let sentence_terminators = &[
-        '.', '!', '?', ';', ':', '؟', '。', '？', '！', '।', '♪', '*', '"',
+        '.', '!', '?', ';', ':', '؟', '。', '？', '！', '।', '♪', '*', '"', '>',
     ];
     sentence_terminators.contains(character)
 }
@@ -325,7 +325,7 @@ fn chunker(subs: &[SrtSubtitle], chunk: usize) -> impl Iterator<Item = &[SrtSubt
         let chunk_beg = i * chunk;
         let chunk_end = chunk_beg + c.len();
         let beg = i * chunk - back;
-        let mut end = beg + c.len();
+        let mut end = chunk_end;
         let win_start = Ord::max(end - win, beg);
         let win_end = chunk_end;
         let mut bad = true;
@@ -362,7 +362,6 @@ async fn main() -> Result<()> {
     let srt = get_parser(args.in_srt)?;
     let mut out_file = File::create(args.out_srt)?;
     let mut jobs = Vec::new();
-    // for chunk in srt.subtitles.chunks(args.chunk) {
     for chunk in chunker(&srt.subtitles, args.chunk) {
         // Translate each chunk concurrently using the pool
         let chunk = chunk.to_vec();
