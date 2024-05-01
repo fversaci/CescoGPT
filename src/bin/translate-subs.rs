@@ -218,7 +218,7 @@ fn split_into_frames(trans_text: &[String], num_frames: usize) -> Vec<Vec<String
         return vec![trans_text.to_owned()];
     }
     // multiple frames, enough lines, split them
-    println!("num frames: {} text: {:?}", num_frames, trans_text);
+    println!("Spreading text: {:?} to {} frames", trans_text, num_frames);
     let num_lines = trans_text.len();
     if num_lines >= num_frames {
         let mut result = Vec::new();
@@ -309,6 +309,50 @@ fn json_to_chunk(
     Ok(out_chunk)
 }
 
+fn is_end_of_sentence(character: &char) -> bool {
+    let sentence_terminators = &[
+        '.', '!', '?', ';', ':', '؟', '。', '？', '！', '।', '♪', '*', '"',
+    ];
+    sentence_terminators.contains(character)
+}
+
+/// divides in chunks, trying to split at end-of-sentence characters
+fn chunker(subs: &[SrtSubtitle], chunk: usize) -> impl Iterator<Item = &[SrtSubtitle]> {
+    let win = 5; // window size to look for eos
+    let mut ret = Vec::new();
+    let mut back = 0usize;
+    for (i, c) in subs.chunks(chunk).enumerate() {
+        let chunk_beg = i * chunk;
+        let chunk_end = chunk_beg + c.len();
+        let beg = i * chunk - back;
+        let mut end = beg + c.len();
+        let win_start = Ord::max(end - win, beg);
+        let win_end = chunk_end;
+        let mut bad = true;
+        for j in win_start..win_end {
+            let eos = subs[j]
+                .text
+                .last()
+                .and_then(|c| c.trim_end().chars().last());
+            if let Some(eos) = eos {
+                if is_end_of_sentence(&eos) {
+                    end = j + 1;
+                    bad = false;
+                }
+            }
+        }
+        back = chunk_end - end;
+        ret.push(&subs[beg..end]);
+        if bad {
+            println!(
+                "Cannot split at end-of-sentence: {}-{} maps to {}-{}",
+                chunk_beg, chunk_end, beg, end
+            );
+        }
+    }
+    ret.into_iter()
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
@@ -318,7 +362,8 @@ async fn main() -> Result<()> {
     let srt = get_parser(args.in_srt)?;
     let mut out_file = File::create(args.out_srt)?;
     let mut jobs = Vec::new();
-    for chunk in srt.subtitles.chunks(args.chunk) {
+    // for chunk in srt.subtitles.chunks(args.chunk) {
+    for chunk in chunker(&srt.subtitles, args.chunk) {
         // Translate each chunk concurrently using the pool
         let chunk = chunk.to_vec();
         let t = pool.get_translator();
