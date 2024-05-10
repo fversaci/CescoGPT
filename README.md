@@ -89,6 +89,10 @@ Desired output:
 ```
 ````
 
+**Note**: To reduce the risk of misformatting when translating subtitles,
+it is advisable to significantly lower this assistant's temperature,
+for example, from `1` to `0.01`.
+
 ### Filtering the user access
 
 The configuration file
