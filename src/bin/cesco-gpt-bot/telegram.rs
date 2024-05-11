@@ -16,7 +16,7 @@
 use crate::{ChatConv, HashSet, MyState};
 use anyhow::{Error, Result};
 use async_openai::config::OpenAIConfig;
-use async_openai::types::{CreateMessageRequestArgs, CreateRunRequestArgs};
+use async_openai::types::{CreateMessageRequestArgs, CreateRunRequestArgs, MessageRole};
 use async_openai::Client;
 use cesco_gpt::talks::lang_practice::{Lang, LangLevel};
 use cesco_gpt::talks::{get_response, Talk};
@@ -384,7 +384,7 @@ async fn do_talk(bot: Bot, msg: Message, chat_conv: ChatConv) -> HandlerResult {
     let thread_id = &chat_conv.thread_id;
     let chat_client = &chat_conv.chat_client;
     let message = CreateMessageRequestArgs::default()
-        .role("user")
+        .role(MessageRole::User)
         .content(msg_out)
         .build()?;
     let _message_obj = chat_client

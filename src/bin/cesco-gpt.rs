@@ -16,7 +16,7 @@
 
 use anyhow::Result;
 use async_openai::types::{
-    ChatCompletionResponseStream, CreateMessageRequestArgs, CreateRunRequestArgs,
+    ChatCompletionResponseStream, CreateMessageRequestArgs, CreateRunRequestArgs, MessageRole,
 };
 use async_openai::Client;
 use cesco_gpt::talks::{get_response, Talk};
@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
 
     while let Some(msg) = read_msg(&presuff) {
         let message = CreateMessageRequestArgs::default()
-            .role("user")
+            .role(MessageRole::User)
             .content(msg)
             .build()?;
         let _message_obj = client

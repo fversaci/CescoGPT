@@ -15,7 +15,9 @@
 **************************************************************************/
 
 use anyhow::{anyhow, Result};
-use async_openai::types::{CreateMessageRequestArgs, CreateRunRequest, CreateRunRequestArgs};
+use async_openai::types::{
+    CreateMessageRequestArgs, CreateRunRequest, CreateRunRequestArgs, MessageRole,
+};
 use async_openai::{config::OpenAIConfig, Client};
 use cesco_gpt::talks::get_response;
 use cesco_gpt::talks::lang_practice::Lang;
@@ -98,7 +100,7 @@ impl Translator {
     }
     async fn translate_str(&self, msg: &str) -> Result<String> {
         let message = CreateMessageRequestArgs::default()
-            .role("user")
+            .role(MessageRole::User)
             .content(msg)
             .build()?;
         let _message_obj = self

@@ -16,8 +16,8 @@
 
 use anyhow::{anyhow, Error, Result};
 use async_openai::types::{
-    AssistantObject, CreateMessageRequestArgs, CreateThreadRequestArgs, MessageContent, RunStatus,
-    ThreadObject,
+    AssistantObject, CreateMessageRequestArgs, CreateThreadRequestArgs, MessageContent,
+    MessageRole, RunStatus, ThreadObject,
 };
 use async_openai::{config::OpenAIConfig, Client};
 use strum_macros::{Display, EnumIter, EnumString};
@@ -91,7 +91,7 @@ async fn get_asst_thread(
                 let thread = client.threads().create(thread_request.clone()).await?;
                 if let Some(refine) = refine {
                     let ref_msg = CreateMessageRequestArgs::default()
-                        .role("user")
+                        .role(MessageRole::User)
                         .content(refine)
                         .build()?;
                     let _ref_obj = client
@@ -116,16 +116,21 @@ pub async fn get_response(
 ) -> Result<String> {
     loop {
         let run = client.threads().runs(thread_id).retrieve(run_id).await?;
-        if let RunStatus::Completed = run.status {
-            let query = [("limit", "5")];
-            let response = client.threads().messages(thread_id).list(&query).await?;
-            // println!("{:?}", response);
-            let content = response.data.first().unwrap().content.first().unwrap();
-            if let MessageContent::Text(text) = content {
-                return Ok(text.text.value.clone());
+        match run.status {
+            RunStatus::Completed => {
+                let query = [("limit", "5")];
+                let response = client.threads().messages(thread_id).list(&query).await?;
+                let content = response.data.first().unwrap().content.first().unwrap();
+                if let MessageContent::Text(text) = content {
+                    return Ok(text.text.value.clone());
+                }
             }
-        } else {
-            std::thread::sleep(std::time::Duration::from_millis(250));
+            RunStatus::InProgress => {
+                std::thread::sleep(std::time::Duration::from_millis(250));
+            }
+            _ => {
+                return Err(anyhow!("{:?}: {:?}", run.status, run.last_error));
+            }
         }
     }
 }
