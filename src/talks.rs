@@ -125,7 +125,7 @@ pub async fn get_response(
                     return Ok(text.text.value.clone());
                 }
             }
-            RunStatus::InProgress => {
+            RunStatus::InProgress | RunStatus::Queued => {
                 std::thread::sleep(std::time::Duration::from_millis(250));
             }
             _ => {
