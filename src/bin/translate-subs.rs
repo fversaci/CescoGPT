@@ -127,7 +127,8 @@ impl Translator {
         if ret.is_ok() {
             return ret;
         }
-        // Something went wrong, replace with a new translator
+        // Something went wrong, print error and replace with a new translator
+        println!("Error detected: {}", ret.err().unwrap());
         let new_trans = Translator::new(self.client.clone(), self.lang.clone()).await?;
         *self = new_trans;
         // Couldn't translate even a single block, give up and use the original text
@@ -137,7 +138,7 @@ impl Translator {
         }
         // More lines, try divide et impera
         println!(
-            "Dividing chunk {}-{}",
+            "Is chunk size too big? Dividing chunk {}-{}",
             chunk.first().unwrap().sequence,
             chunk.last().unwrap().sequence
         );
