@@ -115,8 +115,7 @@ impl Translator {
             .runs(&self.thread_id)
             .create(self.run_request.clone())
             .await?;
-        let resp = get_response(&self.client, &run.id, &self.thread_id).await?;
-        Ok(resp)
+        get_response(&self.client, &run.id, &self.thread_id).await
     }
     async fn translate_chunk(&mut self, chunk: &[SrtSubtitle]) -> Result<Vec<SrtSubtitle>> {
         // try and translate it
@@ -188,8 +187,7 @@ fn get_parser(subs_fn: PathBuf) -> Result<SubRip> {
     // read subs file
     let subs_f = File::open(subs_fn)?;
     let mut subs = String::new();
-    let mut file_reader = BufReader::new(subs_f);
-    file_reader.read_to_string(&mut subs)?;
+    BufReader::new(subs_f).read_to_string(&mut subs)?;
     // parse text
     Ok(SubRip::parse(&subs)?)
 }
@@ -364,17 +362,17 @@ async fn main() -> Result<()> {
     let mut pool = TranslatorPool::new(args.num, client, args.lang).await?;
     let srt = get_parser(args.in_srt)?;
     let mut out_file = File::create(args.out_srt)?;
-    let mut jobs = Vec::new();
-    for chunk in chunker(&srt.subtitles, args.chunk) {
-        // Translate each chunk concurrently using the pool
-        let chunk = chunk.to_vec();
-        let t = pool.get_translator();
-        let task = tokio::spawn(async move {
-            let mut t = t.lock().await;
-            t.translate_chunk(&chunk).await
-        });
-        jobs.push(task);
-    }
+    let jobs: Vec<_> = chunker(&srt.subtitles, args.chunk)
+        .map(|chunk| {
+            // Translate each chunk concurrently using the pool
+            let chunk = chunk.to_vec();
+            let t = pool.get_translator();
+            tokio::spawn(async move {
+                let mut t = t.lock().await;
+                t.translate_chunk(&chunk).await
+            })
+        })
+        .collect();
     // Collect and write the translated blocks to the output file
     for job in jobs {
         let translated_chunk = job.await?;
