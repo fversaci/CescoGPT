@@ -158,7 +158,7 @@ struct TranslatorPool {
 impl TranslatorPool {
     async fn new(num: usize, client: Client<OpenAIConfig>, lang: Lang) -> Result<Self> {
         if num == 0 {
-            return Err(anyhow!("Error: pool must have at least 1 translator"));
+            return Err(anyhow!("Error: pool must have at least 1 translator."));
         }
         let mut translators = Vec::new();
         for _ in 0..num {
@@ -254,15 +254,20 @@ fn split_into_frames(trans_text: &[String], num_frames: usize) -> Vec<Vec<String
     result
 }
 
-fn assemble_blocks(in_blocks: &[SrtSubtitle], trans_text: &[String]) -> Vec<SrtSubtitle> {
-    let frames = split_into_frames(trans_text, in_blocks.len());
+fn assemble_blocks(in_blocks: &[SrtSubtitle], trans_text: &[String]) -> Result<Vec<SrtSubtitle>> {
+    let num_frames = in_blocks.len();
+    let max_spread = 3;
+    if num_frames > max_spread {
+        return Err(anyhow!("Spreading text too much."))
+    }
+    let frames = split_into_frames(trans_text, num_frames);
     assert!(frames.len() == in_blocks.len());
     let mut out_blocks = Vec::new();
     for (in_block, text) in in_blocks.iter().zip(frames) {
         let trans_block = SrtSubtitle { text, ..*in_block };
         out_blocks.push(trans_block);
     }
-    out_blocks
+    Ok(out_blocks)
 }
 
 fn json_to_chunk(
@@ -277,15 +282,15 @@ fn json_to_chunk(
     while let Some((trans_label, trans_data)) = trans_iter.next() {
         let in_label = in_labs.get(in_curr);
         if in_label.is_none() {
-            return Err(anyhow!("Exhausted input"));
+            return Err(anyhow!("Exhausted input."));
         }
         let in_label = in_label.unwrap();
         if *in_label != trans_label {
-            return Err(anyhow!("Missing label in translated chunk"));
+            return Err(anyhow!("Missing label in translated chunk."));
         }
         let trans_blocks;
         if trans_iter.peek().is_none() {
-            trans_blocks = assemble_blocks(&in_chunk[in_curr..], &trans_data);
+            trans_blocks = assemble_blocks(&in_chunk[in_curr..], &trans_data)?;
         } else {
             let next_label = &trans_iter.peek().unwrap().0;
             let mut num_blocks = 0;
@@ -299,10 +304,10 @@ fn json_to_chunk(
             }
             if found {
                 trans_blocks =
-                    assemble_blocks(&in_chunk[in_curr..in_curr + num_blocks], &trans_data);
+                    assemble_blocks(&in_chunk[in_curr..in_curr + num_blocks], &trans_data)?;
                 in_curr += num_blocks;
             } else {
-                return Err(anyhow!("Label not found"));
+                return Err(anyhow!("Label not found."));
             }
         }
         out_chunk.extend(trans_blocks);
