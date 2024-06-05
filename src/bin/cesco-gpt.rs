@@ -89,6 +89,7 @@ async fn main() -> Result<()> {
     }
     let run_request = CreateRunRequestArgs::default()
         .assistant_id(&asst.id)
+        // .stream(true)
         .build()?;
 
     while let Some(msg) = read_msg(&presuff) {
