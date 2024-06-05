@@ -15,7 +15,9 @@
 **************************************************************************/
 
 use anyhow::{anyhow, Result};
-use async_openai::types::{AudioResponseFormat, CreateTranscriptionRequestArgs};
+use async_openai::types::{
+    AudioResponseFormat, CreateTranscriptionRequestArgs, CreateTranslationRequestArgs,
+};
 use async_openai::Client;
 use clap::Parser;
 use std::fs::File;
@@ -38,6 +40,9 @@ struct Args {
     /// Produce SubRip SRT output
     #[arg(long, default_value_t = false)]
     srt: bool,
+    /// Translate into English
+    #[arg(long, default_value_t = false)]
+    eng: bool,
 }
 
 #[tokio::main]
@@ -51,20 +56,43 @@ async fn main() -> Result<()> {
     } else {
         AudioResponseFormat::Json
     };
-    let mut request = CreateTranscriptionRequestArgs::default()
-        .file(args.audio_fn)
-        .model("whisper-1")
-        .language(args.lang)
-        .response_format(fmt)
-        .build()?;
-    request.prompt = args.prompt;
+    // Transcription
+    if !args.eng {
+        let mut request = CreateTranscriptionRequestArgs::default()
+            .file(args.audio_fn)
+            .model("whisper-1")
+            .language(args.lang)
+            .response_format(fmt)
+            .build()?;
+        request.prompt = args.prompt;
 
-    if !args.srt {
-        let response = client.audio().transcribe(request).await?;
-        writeln!(out_file, "{}", response.text)?;
+        if args.srt {
+            let response = client.audio().transcribe_raw(request).await?;
+            writeln!(out_file, "{}", String::from_utf8_lossy(response.as_ref()))?;
+        } else {
+            let response = client.audio().transcribe(request).await?;
+            writeln!(out_file, "{}", response.text)?;
+        }
     } else {
-        let response = client.audio().transcribe_raw(request).await?;
-        writeln!(out_file, "{}", String::from_utf8_lossy(response.as_ref()))?;
+        // Translation
+        let mut request = CreateTranslationRequestArgs::default()
+            .file(args.audio_fn)
+            .model("whisper-1")
+            .response_format(fmt)
+            .build()?;
+        request.prompt = args.prompt;
+
+        let response = client.audio().translate(request).await?;
+        writeln!(out_file, "{}", response.text)?;
+        /*
+        if args.srt {
+            let response = client.audio().translate_verbose_json(request).await?;
+            writeln!(out_file, "{}", response.text)?;
+        } else {
+            let response = client.audio().translate(request).await?;
+            writeln!(out_file, "{}", response.text)?;
+        }
+         */
     }
 
     Ok(())
