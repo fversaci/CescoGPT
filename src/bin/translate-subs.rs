@@ -258,7 +258,7 @@ fn assemble_blocks(in_blocks: &[SrtSubtitle], trans_text: &[String]) -> Result<V
     let num_frames = in_blocks.len();
     let max_spread = 3;
     if num_frames > max_spread {
-        return Err(anyhow!("Spreading text too much."))
+        return Err(anyhow!("Spreading text too much."));
     }
     let frames = split_into_frames(trans_text, num_frames);
     assert!(frames.len() == in_blocks.len());
