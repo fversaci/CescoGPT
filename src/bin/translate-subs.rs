@@ -89,6 +89,7 @@ impl Translator {
         let asst = ts.asst;
         let run_request = CreateRunRequestArgs::default()
             .assistant_id(&asst.id)
+            .parallel_tool_calls(false)
             .build()?;
 
         Ok(Self {

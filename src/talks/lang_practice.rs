@@ -56,6 +56,7 @@ pub async fn get_conv(
     let (asst, thread) = get_asst_thread(client, name, Some(&refine)).await?;
     let run_request = CreateRunRequestArgs::default()
         .assistant_id(&asst.id)
+        .parallel_tool_calls(false)
         .build()?;
     let run = client
         .threads()

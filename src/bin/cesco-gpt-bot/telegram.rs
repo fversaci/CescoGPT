@@ -363,7 +363,6 @@ async fn start_talk(
     let run_request = CreateRunRequestArgs::default()
         .assistant_id(&asst.id)
         .parallel_tool_calls(false)
-        .stream(true)
         .build()?;
     let presuff = ts.presuff;
     if let Some(msg) = ts.msg {
