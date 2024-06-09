@@ -14,7 +14,7 @@
   limitations under the License.
 **************************************************************************/
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use async_openai::types::{
     AudioResponseFormat, CreateTranscriptionRequestArgs, CreateTranslationRequestArgs,
 };

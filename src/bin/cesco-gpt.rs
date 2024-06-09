@@ -16,13 +16,13 @@
 
 use anyhow::Result;
 use async_openai::types::{
-    ChatCompletionResponseStream, CreateMessageRequestArgs, CreateRunRequestArgs, MessageRole,
+    AssistantEventStream, CreateMessageRequestArgs, CreateRunRequestArgs, MessageRole,
 };
 use async_openai::Client;
-use cesco_gpt::talks::{get_response, Talk};
+use cesco_gpt::talks::{stream_messages, Talk};
 use clap::Parser;
 use std::io::{stdout, Write};
-use tokio_stream::{Stream, StreamExt};
+use tokio_stream::StreamExt;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -54,24 +54,19 @@ fn read_msg(presuff: &(String, String)) -> Option<String> {
     }
 }
 
-async fn print_stream(mut stream: ChatCompletionResponseStream) -> Result<()> {
+async fn print_stream(stream: AssistantEventStream) -> Result<()> {
+    let mut messages = Box::pin(stream_messages(stream));
     let mut lock = stdout().lock();
-    while let Some(result) = stream.next().await {
-        match result {
-            Ok(response) => {
-                response.choices.iter().for_each(|chat_choice| {
-                    if let Some(ref content) = chat_choice.delta.content {
-                        write!(lock, "{}", content).unwrap();
-                    }
-                });
+    while let Some(message) = messages.next().await {
+        match message {
+            Ok(text) => {
+                write!(lock, "{}", text).unwrap();
+                lock.flush().unwrap();
             }
-            Err(err) => {
-                writeln!(lock, "error: {err}").unwrap();
-            }
+            Err(e) => eprintln!("Error: {:?}", e),
         }
-        lock.flush()?;
     }
-    writeln!(lock).unwrap();
+    writeln!(lock, "\n").unwrap();
     Ok(())
 }
 
@@ -89,7 +84,8 @@ async fn main() -> Result<()> {
     }
     let run_request = CreateRunRequestArgs::default()
         .assistant_id(&asst.id)
-        // .stream(true)
+        .parallel_tool_calls(false)
+        .stream(true)
         .build()?;
 
     while let Some(msg) = read_msg(&presuff) {
@@ -102,14 +98,15 @@ async fn main() -> Result<()> {
             .messages(&thread.id)
             .create(message)
             .await?;
-        let run = client
+        let run_stream = client
             .threads()
             .runs(&thread.id)
-            .create(run_request.clone())
+            .create_stream(run_request.clone())
             .await?;
-        let resp = get_response(&client, &run.id, &thread.id).await?;
-        println!("{resp}\n");
+        print_stream(run_stream).await?;
     }
+    // clean up thread
+    client.threads().delete(&thread.id).await?;
 
     Ok(())
 }

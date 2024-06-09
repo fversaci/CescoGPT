@@ -16,10 +16,12 @@
 use crate::{ChatConv, HashSet, MyState};
 use anyhow::{Error, Result};
 use async_openai::config::OpenAIConfig;
-use async_openai::types::{CreateMessageRequestArgs, CreateRunRequestArgs, MessageRole};
+use async_openai::types::{
+    AssistantEventStream, CreateMessageRequestArgs, CreateRunRequestArgs, MessageRole,
+};
 use async_openai::Client;
 use cesco_gpt::talks::lang_practice::{Lang, LangLevel};
-use cesco_gpt::talks::{get_response, Talk};
+use cesco_gpt::talks::{get_response, stream_messages, Talk};
 use chrono::prelude::*;
 use chrono::Duration;
 use std::str::FromStr;
@@ -32,7 +34,7 @@ use teloxide::{
     types::{InlineKeyboardButton, InlineKeyboardMarkup, MessageId, ParseMode},
     utils::command::BotCommands,
 };
-use tokio_stream::{Stream, StreamExt};
+use tokio_stream::StreamExt;
 
 type MyDialogue = Dialogue<State, InMemStorage<State>>;
 type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
@@ -360,6 +362,8 @@ async fn start_talk(
     let asst = ts.asst;
     let run_request = CreateRunRequestArgs::default()
         .assistant_id(&asst.id)
+        .parallel_tool_calls(false)
+        .stream(true)
         .build()?;
     let presuff = ts.presuff;
     if let Some(msg) = ts.msg {
@@ -392,12 +396,13 @@ async fn do_talk(bot: Bot, msg: Message, chat_conv: ChatConv) -> HandlerResult {
         .messages(thread_id)
         .create(message)
         .await?;
-    let run = chat_client
+    let run_stream = chat_client
         .threads()
         .runs(thread_id)
-        .create(chat_conv.run_request)
+        .create_stream(chat_conv.run_request)
         .await?;
-    send_pseudo_stream(bot, chat_id, chat_client, &run.id, thread_id).await?;
+    // send_pseudo_stream(bot, chat_id, chat_client, &run.id, thread_id).await?;
+    send_stream(bot, chat_id, run_stream).await?;
 
     Ok(())
 }
@@ -443,33 +448,25 @@ async fn send_pseudo_stream(
     update_markdown(bot, chat_id, m_id, &resp).await
 }
 
-/*
 async fn send_stream(
     bot: Bot,
     chat_id: ChatId,
-    mut stream: impl Stream<Item = ResponseChunk> + std::marker::Unpin,
-) -> Result<Option<ChatMessage>> {
+    stream: AssistantEventStream,
+) -> Result<()> {
     // send message zero
     let zero = bot.send_message(chat_id, "...").await?;
     let m_id = zero.id;
     // send updates
-    let mut output: Vec<ResponseChunk> = Vec::new();
+    let mut messages = Box::pin(stream_messages(stream));
     let mut msg = String::new();
     let mut oldtime = Utc::now();
     let mintime = Duration::milliseconds(2500);
-    while let Some(chunk) = stream.next().await {
+    while let Some(chunk) = messages.next().await {
         match chunk {
-            ResponseChunk::Content {
-                delta,
-                response_index,
-            } => {
+            Ok(delta) => {
                 msg.push_str(&delta);
                 let msg_len = msg.len(); // save length
                 msg.push_str("\n...");
-                output.push(ResponseChunk::Content {
-                    delta,
-                    response_index,
-                });
                 // send/update msg every block token
                 let now = Utc::now();
                 if now - oldtime > mintime {
@@ -479,7 +476,9 @@ async fn send_stream(
                 // restore message without trailing dots
                 msg.truncate(msg_len);
             }
-            other => output.push(other),
+            Err(e) => {
+                msg.push_str(&format!("\n\nError: {}", e));
+            }
         }
     }
     // send/update final msg
@@ -487,7 +486,5 @@ async fn send_stream(
         msg.push_str("-- ␃ --"); // end of text
     }
     update_markdown(bot, chat_id, m_id, &msg).await?;
-    let msgs = ChatMessage::from_response_chunks(output);
-    Ok(msgs.first().cloned())
+    Ok(())
 }
-*/

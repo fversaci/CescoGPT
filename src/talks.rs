@@ -16,8 +16,9 @@
 
 use anyhow::{anyhow, Error, Result};
 use async_openai::types::{
-    AssistantObject, CreateMessageRequestArgs, CreateThreadRequestArgs, MessageContent,
-    MessageRole, RunStatus, ThreadObject,
+    AssistantEventStream, AssistantObject, AssistantStreamEvent, CreateMessageRequestArgs,
+    CreateThreadRequestArgs, MessageContent, MessageDeltaContent, MessageRole, RunStatus,
+    ThreadObject,
 };
 use async_openai::{config::OpenAIConfig, Client};
 use strum_macros::{Display, EnumIter, EnumString};
@@ -28,6 +29,7 @@ mod summarize;
 mod translate_subs;
 use clap::Subcommand;
 use lang_practice::{Lang, LangLevel};
+use tokio_stream::{Stream, StreamExt};
 
 pub struct TalkStart {
     pub thread: ThreadObject,
@@ -88,7 +90,7 @@ async fn get_asst_thread(
         for asst in data {
             if asst.name.clone().is_some_and(|x| x == name) {
                 let thread_request = CreateThreadRequestArgs::default().build()?;
-                let thread = client.threads().create(thread_request.clone()).await?;
+                let thread = client.threads().create(thread_request).await?;
                 if let Some(refine) = refine {
                     let ref_msg = CreateMessageRequestArgs::default()
                         .role(MessageRole::User)
@@ -105,6 +107,66 @@ async fn get_asst_thread(
         }
         if !asst_list.has_more {
             return Err(anyhow!("No assistant found with name {name}."));
+        }
+    }
+}
+
+pub fn stream_messages(mut stream: AssistantEventStream) -> impl Stream<Item = Result<String>> {
+    async_stream::stream! {
+        while let Some(event) = stream.next().await {
+            match event {
+                Ok(event) => match event {
+                    AssistantStreamEvent::ThreadMessageDelta(deltas) => {
+                    // Iterate through the vector of `MessageDeltaContent`
+                        if let Some(contents) = deltas.delta.content {
+                            for content in contents {
+                                if let MessageDeltaContent::Text(text_object) = content {
+                                // Check if `text_object.text` has content
+                                    if let Some(text) = &text_object.text {
+                                    // Check if `text.value` has content
+                                        if let Some(value) = &text.value {
+                                            yield Ok(value.clone());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    AssistantStreamEvent::ThreadRunCreated(_)
+                    | AssistantStreamEvent::ThreadRunQueued(_)
+                    | AssistantStreamEvent::ThreadRunInProgress(_)
+                    | AssistantStreamEvent::ThreadRunCompleted(_)
+                    | AssistantStreamEvent::ThreadRunStepCreated(_)
+                    | AssistantStreamEvent::ThreadRunStepInProgress(_)
+                    | AssistantStreamEvent::ThreadRunStepCompleted(_)
+                    | AssistantStreamEvent::ThreadMessageCreated(_)
+                    | AssistantStreamEvent::ThreadMessageInProgress(_)
+                    | AssistantStreamEvent::ThreadMessageCompleted(_)
+                    | AssistantStreamEvent::Done(_) => {
+                        // do nothing
+                    }
+                    AssistantStreamEvent::ThreadRunRequiresAction(_)
+                    | AssistantStreamEvent::ThreadRunIncomplete(_)
+                    | AssistantStreamEvent::ThreadRunFailed(_)
+                    | AssistantStreamEvent::ThreadRunCancelling(_)
+                    | AssistantStreamEvent::ThreadRunCancelled(_)
+                    | AssistantStreamEvent::ThreadRunExpired(_)
+                    | AssistantStreamEvent::ThreadRunStepFailed(_)
+                    | AssistantStreamEvent::ThreadRunStepCancelled(_)
+                    | AssistantStreamEvent::ThreadRunStepExpired(_)
+                    | AssistantStreamEvent::ThreadMessageIncomplete(_)
+                    | AssistantStreamEvent::ErrorEvent(_) => {
+                        // log error
+                        yield Err(anyhow!("Error: {:?}", event));
+                    }
+                    _ => {
+                        yield Err(anyhow!("What's this? {:?}", event));
+                    }
+                },
+                Err(e) => {
+                    yield Err(anyhow!("Error: {e}"));
+                }
+            }
         }
     }
 }
