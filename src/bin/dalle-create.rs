@@ -16,7 +16,7 @@
 
 use anyhow::Result;
 use async_openai::types::{
-    CreateImageRequestArgs, ImageModel, ImageQuality, ImageSize, ResponseFormat,
+    CreateImageRequestArgs, ImageModel, ImageQuality, ImageResponseFormat, ImageSize,
 };
 use async_openai::Client;
 use clap::Parser;
@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
         .prompt(prompt)
         .model(ImageModel::DallE3)
         .n(1)
-        .response_format(ResponseFormat::B64Json)
+        .response_format(ImageResponseFormat::B64Json)
         .size(ImageSize::S1024x1024)
         .quality(quality)
         .build()?;

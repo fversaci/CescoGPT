@@ -447,11 +447,7 @@ async fn send_pseudo_stream(
     update_markdown(bot, chat_id, m_id, &resp).await
 }
 
-async fn send_stream(
-    bot: Bot,
-    chat_id: ChatId,
-    stream: AssistantEventStream,
-) -> Result<()> {
+async fn send_stream(bot: Bot, chat_id: ChatId, stream: AssistantEventStream) -> Result<()> {
     // send message zero
     let zero = bot.send_message(chat_id, "...").await?;
     let m_id = zero.id;
