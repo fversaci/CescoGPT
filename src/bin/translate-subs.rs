@@ -225,8 +225,8 @@ fn split_into_frames(trans_text: &[String], num_frames: usize) -> Vec<Vec<String
     if num_lines >= num_frames {
         let mut result = Vec::new();
         for i in 0..num_frames {
-            let start = (i * num_lines + num_frames - 1) / num_frames;
-            let end = ((i + 1) * num_lines + num_frames - 1) / num_frames;
+            let start = (i * num_lines).div_ceil(num_frames);
+            let end = ((i + 1) * num_lines).div_ceil(num_frames);
             let slice = &trans_text[start..end];
             result.push(slice.to_vec());
         }
@@ -239,8 +239,8 @@ fn split_into_frames(trans_text: &[String], num_frames: usize) -> Vec<Vec<String
     if num_words >= num_frames {
         let mut result = Vec::new();
         for i in 0..num_frames {
-            let start = (i * num_words + num_frames - 1) / num_frames;
-            let end = ((i + 1) * num_words + num_frames - 1) / num_frames;
+            let start = (i * num_words).div_ceil(num_frames);
+            let end = ((i + 1) * num_words).div_ceil(num_frames);
             let slice = &words[start..end];
             let slice = slice.join(" ");
             result.push(vec![slice]);
