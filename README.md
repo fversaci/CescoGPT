@@ -10,6 +10,7 @@ for a variety of purposes:
 4. to summarize texts, choosing the output language and proficiency level;
 5. to translate SRT movie subtitles into any desired language;
 6. to transcribe audio files into text;
+7. to generate images via DALL-E 3.
 
 ## Configuration
 
